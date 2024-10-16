@@ -10,7 +10,7 @@ from openpyxl.worksheet import cell_range as pxl_rng
 sys.path.insert(0, '..\..')
 
 from db_controllers import _controller_base
-from db_controllers.entity_capsules import capsules
+from db_controllers.entity_capsules import _capsule_base
 
 
 from db_controllers.xl.sheet import io_sht as io_sht
@@ -19,7 +19,7 @@ from db_controllers.xl.validation import validation_sht as io_val
 
 
 CNTR = typing.TypeVar("CNTR", bound=_controller_base.ControllerBase)
-CT = typing.TypeVar("CT", bound=capsules._capsule_base.CapsuleBase)
+CT = typing.TypeVar("CT", bound=_capsule_base.CapsuleBase)
 
 class IoWorkbook():
   def __init__(self, 

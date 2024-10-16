@@ -7,7 +7,6 @@ from sqlalchemy import orm as sqlalchemy_orm
 
 
 from db_controllers.entity_capsules import _capsule_base
-from src.model import base_model
 
 PYTHON_BUILTINS_MODULE = "builtins"
 INIT_ENFORCE_NOT_NEW_OR_DIRTY_FLAG = "enforceNotNewOrDirty"

@@ -5,12 +5,10 @@ from sqlalchemy import orm as sqlalchemy_orm
 import sqlalchemy
 
 
-from db_controllers.entity_capsules import capsules, _capsule_utils 
+from db_controllers.entity_capsules import _capsule_base, _capsule_utils 
 from db_controllers.xl import io_wkb 
 from db_controllers import _controller_base, _controller_attr, controller_head, \
                             _controller_obj_setup, _controller_json, _controller_utils
-
-from db_controllers.specific_controller_attributes import project_input, fifo_data, asset_classification
 
 ######################################################################################
 ######################################################################################
@@ -21,7 +19,7 @@ from db_controllers.specific_controller_attributes import project_input, fifo_da
 
 
 C = typing.TypeVar("C", bound=_controller_base.ControllerBase)
-CT = typing.TypeVar("CT", bound=capsules._capsule_base.CapsuleBase)
+CT = typing.TypeVar("CT", bound=_capsule_base.CapsuleBase)
 CONTR_ENUM_STR = typing.TypeVar("CONTR_ENUM_STR", str, _controller_base.ControllerKeyEnum)
 
 _controllerTypeNames = ['BasicSpecification', 
@@ -200,12 +198,14 @@ class Controller(_controller_base.ControllerBase):
       setattr(self, _controller_utils.getStartsWithLowerCase(_subControllerType.__name__),
               _subControllerType(session = session))
 
+def get_basic_controller(session: sqlalchemy_orm.Session) -> typing.Type[C]:
+  return Controller(session = session)
 
 def getControllerClass(
             subControllerTypes: list[_controller_base.ControllerBase],
             session: sqlalchemy_orm.Session,
             callingGlobals: typing.Dict[str, any]
-            ) -> _controller_base.ControllerBase:
+            ) ->typing.Type[C]:
   controller = Controller(session = session)
   controller.setSubControllerTypes(subControllerTypes = subControllerTypes)
   _controller_attr.addAttributes(controllerTypeNames = _controllerTypeNames,

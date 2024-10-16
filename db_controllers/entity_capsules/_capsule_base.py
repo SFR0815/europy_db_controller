@@ -5,7 +5,6 @@ from sqlalchemy import orm as sqlalchemy_orm
 import sqlalchemy 
 from sqlalchemy.ext import declarative as sqlalchemy_decl
 
-from src.model import base_model
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -20,7 +19,8 @@ def cleanAndCloseSession(func):
     try:
       result = func(*args, **kwargs)
     except Exception as e:
-      base_model.cleanAndClose(session = session)
+      session.expunge_all()
+      session.close()
       raise e
     return result
   return wrapper 
@@ -46,7 +46,8 @@ class CapsuleBase():
   sqlalchemyTableType: any
 
   def _raiseException(self, errMsg: str): 
-    base_model.cleanAndClose(self.session)
+    self.session.expunge_all()
+    self.session.close()
     raise Exception(errMsg)
 
   @cleanAndCloseSession
@@ -116,7 +117,8 @@ class CapsuleBase():
       tableEntity = session.execute(query).scalar()
     if tableEntity is None:
       errMsg = f"Could not find any db entry with id '{id}' on table {str(self.sqlalchemyTableType.__table__)}."
-      base_model.cleanAndClose(session)
+      session.expunge_all()
+      session.close()
       raise Exception(errMsg)
     return tableEntity
   def queryById(self,

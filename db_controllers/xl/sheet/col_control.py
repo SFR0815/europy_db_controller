@@ -16,7 +16,7 @@ from openpyxl.worksheet import cell_range as pxl_rng
 sys.path.insert(0, '..\..\..')
 
 from db_controllers import _controller_base
-from db_controllers.entity_capsules import _capsule_utils, capsules
+from db_controllers.entity_capsules import _capsule_utils, _capsule_base
 from db_controllers.xl.sheet import row_control, data_column, utils, \
                                      delete_cntr_column, col_control_data
 from db_controllers.xl.sheet import data_block
@@ -29,7 +29,7 @@ if typing.TYPE_CHECKING:
 debug_rec_count: int = 0
 
 DC = typing.TypeVar("DC", bound=data_column.DataColumn)
-CT = typing.TypeVar("CT", bound=capsules._capsule_base.CapsuleBase)
+CT = typing.TypeVar("CT", bound=_capsule_base.CapsuleBase)
 
 
 class ColControl():

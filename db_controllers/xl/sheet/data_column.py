@@ -9,9 +9,6 @@ from openpyxl.worksheet import cell_range as pxl_rng
 from openpyxl.cell import cell as pxl_cell
 from openpyxl.worksheet import worksheet as pxl_sht
 
-sys.path.insert(0, '..\..\..')
-
-from src.utils import date_utils
 
 from db_controllers import _controller_base
 from db_controllers.xl.sheet import data_block
@@ -120,7 +117,7 @@ class DataColumn():
     if isinstance(cellValue, uuid.UUID):
       cellValue = str(cellValue)
     elif isinstance(cellValue, datetime.datetime):
-      cellValue = date_utils.datetimeToString(value = cellValue)
+      cellValue = cellValue.strftime('%Y-%m-%d %H:%M:%S')
     cell.value = cellValue
     cell.fill = self._patternFill
     cell.border = self._border

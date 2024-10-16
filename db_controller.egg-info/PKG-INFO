@@ -1,0 +1,16 @@
+Metadata-Version: 2.1
+Name: db_controller
+Version: 1.0
+Author: Stephan Raab & Lucas Ullon
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+Requires-Dist: Flask<=2.3.1
+Requires-Dist: holidays<=0.44
+Requires-Dist: openpyxl<=3.1.2
+Requires-Dist: psycopg2-binary<=2.9.9
+Requires-Dist: SQLAlchemy<=2.0.29
+Requires-Dist: SQLAlchemy-Utils<=0.41.2
+Requires-Dist: Flask-SQLAlchemy<=3.1.1
+Requires-Dist: Flask-Caching<=2.1.0
