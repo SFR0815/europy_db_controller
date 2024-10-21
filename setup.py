@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 #* run setup command: pip install -e .
 
 setup(
-    name = "db_controller",
+    name = "europy_db_controllers",
     version = "1.0",
     description = "",
     author = "Stephan Raab & Lucas Ullon",
