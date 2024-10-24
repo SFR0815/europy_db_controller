@@ -226,7 +226,7 @@ def __addFromDictFunctions(controllerType : type[T],
                                    persistentMustHaveId = persistentMustHaveId,
                                    relationshipEntitiesCatalog = relationshipEntitiesCatalog)
           # if contentKey == 'transaction_type':
-          #   ctDict = ct.toDict()
+          #   ctDict = contentType.toDict()
           #   print('ctDict: \n', ctDict)
     return output              
                 

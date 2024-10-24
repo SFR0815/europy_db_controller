@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import sys, uuid, typing, datetime
-from sqlalchemy import orm as sqlalchemy_orm
-import sqlalchemy
+import typing
 
 
-from europy_db_controllers.entity_capsules import _capsule_base, _capsule_utils 
-from europy_db_controllers.xl import io_wkb 
-from europy_db_controllers import _controller_base, _controller_attr, controller_head, \
-                            _controller_obj_setup, _controller_json, _controller_utils
+from europy_db_controllers.entity_capsules import _capsule_base
+from europy_db_controllers import _controller_base, _controller_attr, \
+                            _controller_obj_setup, _controller_json
 
 ######################################################################################
 ######################################################################################
