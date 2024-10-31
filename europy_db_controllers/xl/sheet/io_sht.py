@@ -28,12 +28,14 @@ class IoWorkSheet():
   def __init__(self,
                subControllerKey: _controller_base.ControllerKeyEnum,
                capsuleType: type[CT],
+               capsuleList: list[type[CT]],
                validations: io_val.ValidationSheet
                # FIXME pass list of validations to be treated in wkb here
                ) -> None:
     self.subControllerKey = subControllerKey
     self.validations = validations
     self._capsuleType: type[CT] = capsuleType
+    self._capsuleList: list[type[CT]] = capsuleList
     self._sqlalchemyType: sqlalchemy_decl.DeclarativeMeta = self._capsuleType.sqlalchemyTableType
     self._table: sqlalchemy_schema.Table = self._sqlalchemyType.__table__
     self._capsuleKey = self._capsuleType._key()    
@@ -42,6 +44,7 @@ class IoWorkSheet():
     self.colControl: col_control.ColControl = col_control.ColControl(
                   subControllerKey = subControllerKey,
                   capsuleType = self._capsuleType,
+                  capsuleList = self._capsuleList,
                   rowControl = self.rowControl,
                   validations=self.validations)
     self.rowControl.colControl = self.colControl

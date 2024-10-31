@@ -132,8 +132,12 @@ class ColControl():
     relDecl: sqlalchemy_decl.DeclarativeMeta = relationship.mapper.class_
     relDeclTable = relDecl.__table__
     relCapsuleTypeName = _capsule_utils.getCapsuleClassName(table = relDeclTable)
-    relCapsuleType = getattr(capsules, relCapsuleTypeName)
-    return (relName, relDecl, relDeclTable, relCapsuleType)
+    for capsuleType in self._capsuleList:
+      capsuleTypeName = capsuleType.__name__
+      if capsuleTypeName == relCapsuleTypeName:
+        # relCapsuleType = getattr(self._capsuleTypes, relCapsuleTypeName)
+        relCapsuleType = capsuleType
+        return (relName, relDecl, relDeclTable, relCapsuleType)
   def __getRelationshipDefinitionsOfColumn(self,
                                            column: sqlalchemy_schema.Column
                                            ) -> typing.Tuple[str, 
@@ -193,6 +197,7 @@ class ColControl():
   def __init__(self,
                subControllerKey: _controller_base.ControllerKeyEnum,
                capsuleType: type[CT],
+               capsuleList: list[type[CT]],
                rowControl: row_control._rowControl,
                validations: io_val.ValidationSheet,
                firstCol: int = 1,
@@ -202,6 +207,7 @@ class ColControl():
     
     self.subControllerKey = subControllerKey
     self._capsuleType: type[CT] = capsuleType
+    self._capsuleList: list[type[CT]] = capsuleList
     self._sqlalchemyType: sqlalchemy_decl.DeclarativeMeta = self._capsuleType.sqlalchemyTableType
     self._table: sqlalchemy_schema.Table = self._sqlalchemyType.__table__
     self._capsuleKey = self._capsuleType._key()    
@@ -256,6 +262,7 @@ class ColControl():
                         ) -> None:  
     subColControl = ColControl(subControllerKey = self.subControllerKey,
                                capsuleType = capsuleType,
+                               capsuleList = self._capsuleList,
                                rowControl = self._rowControl,
                                validations = self.validations,
                                firstCol = self.lastCol + 1,

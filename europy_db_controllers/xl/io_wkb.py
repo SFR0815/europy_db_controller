@@ -25,9 +25,11 @@ class IoWorkbook():
   def __init__(self, 
                subControllerKey: _controller_base.ControllerKeyEnum,
                capsuleTypes: typing.List[type[CT]],
+               capsuleList: typing.List[type[CT]],
                validationLocators: typing.List[(str, str)]) -> None:
     self.subControllerKey = subControllerKey
     self._capsuleTypes = capsuleTypes
+    self._capsuleList = capsuleList
     self.validations = io_val.ValidationSheet(
                subControllerKey = subControllerKey,
                validationLocators = validationLocators)
@@ -43,6 +45,7 @@ class IoWorkbook():
       ioWorkSheet = io_sht.IoWorkSheet(
                 subControllerKey = self.subControllerKey,
                 capsuleType = capsuleType,
+                capsuleList = self._capsuleList,
                 validations=self.validations)
       self.ioShts[ioWorkSheet.name] = ioWorkSheet
 

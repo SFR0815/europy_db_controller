@@ -1,7 +1,5 @@
 import os, inspect, sys
 
-sys.path.insert(0, '..\..')
-
 import sqlalchemy as sqla
 from sqlalchemy import orm as sqla_orm
 

@@ -106,7 +106,7 @@ def __getObjectSetupCode(capsuleType: type[CT],
                                 f"{_capsule_utils.INIT_ENFORCE_NOT_NEW_OR_DIRTY_FLAG}"
       return output
     output = ""
-    output = output + f"{' ' *2}capsule = capsules.{capsuleType.__name__}({getParameters()})\n"
+    output = output + f"{' ' *2}capsule = {capsuleType.__name__}({getParameters()})\n"
     output = output + f"{' ' *2}capsule.addToSession()\n"
     output = output + f"{' ' *2}return capsule\n"
     return output

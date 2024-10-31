@@ -123,6 +123,7 @@ def __addToDictFunctions(controllerType : type[T],
             capsuleDict = capsule.toDict(omitIds = omitIds)
             numberedCapsulesDict[countOfCapsule] = capsuleDict
             countOfCapsule += 1
+        if capsuleKey in capsulesDict: continue
         capsulesDict[capsuleKey] = numberedCapsulesDict
         # if 'transaction_type' in capsulesDict:
         #   print('capsulesDict[transaction_type]: ', capsulesDict['transaction_type'])
