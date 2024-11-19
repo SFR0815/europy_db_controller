@@ -9,6 +9,8 @@ from europy_db_controllers.entity_capsules import  _capsule_utils
 from europy_db_controllers import _controller_base, _controller_attr
 from europy_db_controllers.xl import io_wkb 
 
+CE = typing.TypeVar('CE', bound = _controller_base.BaseControllerKeyEnum)
+
 
 #{'upload': {'type': 'asset', 'data': transaction_type}}
 class Actions(enum.Enum):
@@ -61,30 +63,36 @@ class Gui(ControllerHeadBase):
 
 class Excel(ControllerHeadBase):
   def __init__(self, 
-               subControllerKey: _controller_base.ControllerKeyEnum = None,
+               controllerKeyEnumType: typing.Type,
+               subControllerKey: CE = None,
                action: _controller_base.XlControllerAction = None,
                filePath: str = None,
                fileName: str = None,
                mostRecentFileName: str = None,
                scope: _controller_base.ControllerDataScopes = \
                       _controller_base.ControllerDataScopes.STORED_ON_DB) -> None:
-    self.subControllerKey: _controller_base.ControllerKeyEnum = subControllerKey
+    self.subControllerKey: CE = subControllerKey
     self.filePath: str = filePath
     self.fileName: str = fileName
     self.mostRecentFileName: str = mostRecentFileName
     self.scope: _controller_base.ControllerDataScopes = scope
     self.action: _controller_base.XlControllerAction = action
     self.ioWkb: io_wkb.IoWorkbook = None
+    # print(f"[before assignment] - type(controllerKeyEnumType) : {type(controllerKeyEnumType)}")
+    self.enumType = controllerKeyEnumType
+    # print(f"[after assignment] - type(enumType) : {type(self.enumType)}")
     if self.action == _controller_base.XlControllerAction.UPLOAD:
       self._identifySubControllerKey()
   def ensureConsistency(self):
-    if self.subControllerKey == _controller_base.ControllerKeyEnum.BASIC_SPECIFICATION \
-          and not self.action == _controller_base.XlControllerAction.DOWNLOAD:
-      raise Exception("Excel controller inconsistent: Basic specifications are available for download only.")
-    # if self.subControllerKey == _controller_base.ControllerKeyEnum.ASSET_CLASSIFICATION \
-    #       and self.action == _controller_base.XlControllerAction.GET_INPUT_TEMPLATE:
-    #   raise Exception("Excel controller inconsistent: asset classification is applicable across all clients.\n" + \
-    #                   "No blank input template available.")
+    pass
+    # FIXME: move the control for permissible uploads etc. into a dictionary controlling the sub-controller's features
+    # if self.subControllerKey == _controller_base.ControllerKeyEnum.BASIC_SPECIFICATION \
+    #       and not self.action == _controller_base.XlControllerAction.DOWNLOAD:
+    #   raise Exception("Excel controller inconsistent: Basic specifications are available for download only.")
+    # # if self.subControllerKey == _controller_base.ControllerKeyEnum.ASSET_CLASSIFICATION \
+    # #       and self.action == _controller_base.XlControllerAction.GET_INPUT_TEMPLATE:
+    # #   raise Exception("Excel controller inconsistent: asset classification is applicable across all clients.\n" + \
+    # #                   "No blank input template available.")
   @classmethod
   def fromDict(specDict: dict) -> Excel:
     if len(specDict) == 0:
@@ -131,9 +139,9 @@ class Excel(ControllerHeadBase):
     if not match:
       raise Exception(f"Could not identify upload key from filepath: \n{self._getUploadFilePath()}\n" + \
                       f"File name must have the format 'YYMMDD_hhmmss_<controller_key>_data.xlsx'")
-    identifiedSubControllerKey: _controller_base.ControllerKeyEnum = None
-    try: 
-      identifiedSubControllerKey = _controller_base.ControllerKeyEnum.from_str(label = match.group(1))
+    identifiedSubControllerKey: CE = None
+    try:
+      identifiedSubControllerKey = self.enumType.from_str(label = match.group(1))
     except:
       raise Exception(f"Irregular subControllerKey identified in upload file path.\n" + \
                       f"subControllerKey: {match.group(1)}\n" + \
@@ -149,9 +157,9 @@ class Excel(ControllerHeadBase):
 
 
 class ControllerHead():
-  def __init__(self):
+  def __init__(self, controllerKeyEnumType: typing.Type):
     self.gui = Gui()
-    self.excel = Excel()
+    self.excel = Excel(controllerKeyEnumType = controllerKeyEnumType)
   @property
   def isLoaded(self):
     return self.gui.isLoaded or self.excel.isLoaded
@@ -159,7 +167,7 @@ class ControllerHead():
   def isAmbiguous(self):
     return self.gui.isLoaded and self.excel.isLoaded
   @classmethod
-  def fromDict(specDict: dict) -> Excel:
+  def fromDict(self, specDict: dict) -> Excel:
     output = ControllerHead()
     if 'excel' in specDict:
       output.excel = Excel.fromDict(specDict = specDict['excel'])

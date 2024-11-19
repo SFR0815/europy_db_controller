@@ -20,6 +20,7 @@ class UUIDEncoder(json.JSONEncoder):
 
 
 def __addToDictFunctions(controllerType : type[T],
+                        controllerKeyEnumType: typing.Type,
                         callingGlobals):
   nameOfDictFnc = _controller_utils.getControllerDataToDictFncName()
   nameOfJsonFnc = _controller_utils.getControllerDataToJsonFncName()
@@ -27,10 +28,10 @@ def __addToDictFunctions(controllerType : type[T],
                 scope: _controller_base.ControllerDataScopes = 
                           _controller_base.ControllerDataScopes.NEW_AND_DIRTY,
                 omitIds: bool = False,
-                subControllerSelected: _controller_base.ControllerKeyEnum = None,
+                subControllerSelected: controllerKeyEnumType = None,
                 fullListsFromDb: typing.List[typing.List[str]] = [] # specify lists that should come from db
                 ) -> dict[str, any]:
-    if not (isinstance(subControllerSelected, _controller_base.ControllerKeyEnum) or subControllerSelected is None):
+    if not (isinstance(subControllerSelected, controllerKeyEnumType) or subControllerSelected is None):
       raise Exception("Got non enum subControllerSelected: ", subControllerSelected)
     result = {}
     validationItems: typing.List[type[CT]] = list[type[CT]]()
@@ -243,10 +244,12 @@ def __addFromDictFunctions(controllerType : type[T],
 
 
 def addDictFunctions(controllerTypeNames : typing.List[type[T]],
-                        callingGlobals):
+                     controllerKeyEnumType: typing.Type,
+                     callingGlobals):
   for controllerTypeName in controllerTypeNames:
     controllerType = callingGlobals[controllerTypeName]
     __addToDictFunctions(controllerType = controllerType,
-                        callingGlobals= callingGlobals)
+                         controllerKeyEnumType = controllerKeyEnumType,
+                         callingGlobals= callingGlobals)
     __addFromDictFunctions(controllerType = controllerType,
                         callingGlobals= callingGlobals)

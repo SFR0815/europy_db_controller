@@ -19,13 +19,13 @@ C = typing.TypeVar("C", bound=_controller_base.ControllerBase)
 CT = typing.TypeVar("CT", bound=_capsule_base.CapsuleBase)
 # CONTR_ENUM_STR = typing.TypeVar("CONTR_ENUM_STR", str, _controller_base.ControllerKeyEnum)
 
-_controllerTypeNames = ['BasicSpecification', 
-                       'AssetClassification', 
-                       'AssetPricing', 
-                       'Controller',
-                       'ClientAdmin',
-                       'ProjectInput',
-                       'FifoData']
+# _controllerTypeNames = ['BasicSpecification', 
+#                        'AssetClassification', 
+#                        'AssetPricing', 
+#                        'Controller',
+#                        'ClientAdmin',
+#                        'ProjectInput',
+#                        'FifoData']
 
 # # class BasicSpecification(_controller_base.ControllerBase):
 # #   _content = [capsules.TransactionTypeCapsule,
@@ -200,24 +200,29 @@ _controllerTypeNames = ['BasicSpecification',
 #   print(f"this controller is None: {this_controller is None}")
 #   return this_controller
 
+CE = typing.TypeVar('CE', bound = _controller_base.BaseControllerKeyEnum)
+
 #FIXME: please think of a better name for this fnc :) 
 def setupControllerClass(
-            callingGlobals: typing.Dict[str, any]
+            callingGlobals: typing.Dict[str, any],
+            controllerTypeNames: typing.List[str],
+            controllerTypeEnumType: typing.Type,
             ) -> typing.Type[C]:
     # Merge callingGlobals with the current file's globals
     merged_globals = globals().copy()
     merged_globals.update(callingGlobals)
     
     # Configure attributes
-    _controller_attr.addAttributes(controllerTypeNames=_controllerTypeNames,
+    _controller_attr.addAttributes(controllerTypeNames=controllerTypeNames,
                                    callingGlobals=merged_globals)
 
     # Add setup methods
-    _controller_obj_setup.addSetupMethods(controllerTypeNames=_controllerTypeNames,
+    _controller_obj_setup.addSetupMethods(controllerTypeNames=controllerTypeNames,
                                           callingGlobals=merged_globals)
 
     # Add dictionary functions
-    _controller_json.addDictFunctions(controllerTypeNames=_controllerTypeNames,
+    _controller_json.addDictFunctions(controllerTypeNames=controllerTypeNames,
+                                      controllerKeyEnumType = controllerTypeEnumType,
                                       callingGlobals=merged_globals)
 
     # Return the configured Controller class

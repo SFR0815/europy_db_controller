@@ -20,7 +20,7 @@ class ValidationSheet():
   _labelRow = 1
   _label = "Validations"
   def __init__(self,
-               subControllerKey: _controller_base.ControllerKeyEnum,
+               subControllerKey: any,
                validationLocators: typing.List[tuple[str, str]]) -> None:
     self.subControllerKey = subControllerKey
     self.validationLocators = validationLocators

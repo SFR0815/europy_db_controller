@@ -5,39 +5,42 @@ from sqlalchemy import orm as sqlalchemy_orm
 
 
 HEAD_KEY = "head"
-BASIC_SPECIFICATION_KEY = "basic_specification"
-ASSET_CLASSIFICATION_KEY = "asset_classification"
-ASSET_PRICING_KEY = "asset_pricing"
-CLIENT_ADMIN_KEY = "client_admin"
-PROJECT_INPUT_KEY = "project_input"
-FIFO_DATA_KEY = "fifo_data"
+# BASIC_SPECIFICATION_KEY = "basic_specification"
+# ASSET_CLASSIFICATION_KEY = "asset_classification"
+# ASSET_PRICING_KEY = "asset_pricing"
+# CLIENT_ADMIN_KEY = "client_admin"
+# PROJECT_INPUT_KEY = "project_input"
+# FIFO_DATA_KEY = "fifo_data"
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# enum of the scope of data provided
-class ControllerKeyEnum(enum.Enum):
-  BASIC_SPECIFICATION = BASIC_SPECIFICATION_KEY
-  ASSET_CLASSIFICATION = ASSET_CLASSIFICATION_KEY
-  ASSET_PRICING = ASSET_PRICING_KEY
-  CLIENT_ADMIN = CLIENT_ADMIN_KEY
-  PROJECT_INPUT = PROJECT_INPUT_KEY
-  FIFO_DATA = FIFO_DATA_KEY
-  @classmethod
-  def from_str(self, label: str):
-    if label in ('BASIC_SPECIFICATION', BASIC_SPECIFICATION_KEY):
-        return ControllerKeyEnum.BASIC_SPECIFICATION
-    elif label in ('ASSET_CLASSIFICATION', ASSET_CLASSIFICATION_KEY):
-        return ControllerKeyEnum.ASSET_CLASSIFICATION
-    elif label in ('ASSET_PRICING', ASSET_PRICING_KEY):
-        return ControllerKeyEnum.ASSET_PRICING
-    elif label in ('CLIENT_ADMIN', CLIENT_ADMIN_KEY):
-        return ControllerKeyEnum.CLIENT_ADMIN
-    elif label in ('PROJECT_INPUT', PROJECT_INPUT_KEY):
-        return ControllerKeyEnum.PROJECT_INPUT
-    elif label in ('FIFO_DATA', FIFO_DATA_KEY):
-        return ControllerKeyEnum.FIFO_DATA
-    else:
-        raise Exception()  
+# # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# # enum of the scope of data provided
+# class ControllerKeyEnum(enum.Enum):
+#   BASIC_SPECIFICATION = BASIC_SPECIFICATION_KEY
+#   ASSET_CLASSIFICATION = ASSET_CLASSIFICATION_KEY
+#   ASSET_PRICING = ASSET_PRICING_KEY
+#   CLIENT_ADMIN = CLIENT_ADMIN_KEY
+#   PROJECT_INPUT = PROJECT_INPUT_KEY
+#   FIFO_DATA = FIFO_DATA_KEY
+#   @classmethod
+#   def from_str(self, label: str):
+#     if label in ('BASIC_SPECIFICATION', BASIC_SPECIFICATION_KEY):
+#         return ControllerKeyEnum.BASIC_SPECIFICATION
+#     elif label in ('ASSET_CLASSIFICATION', ASSET_CLASSIFICATION_KEY):
+#         return ControllerKeyEnum.ASSET_CLASSIFICATION
+#     elif label in ('ASSET_PRICING', ASSET_PRICING_KEY):
+#         return ControllerKeyEnum.ASSET_PRICING
+#     elif label in ('CLIENT_ADMIN', CLIENT_ADMIN_KEY):
+#         return ControllerKeyEnum.CLIENT_ADMIN
+#     elif label in ('PROJECT_INPUT', PROJECT_INPUT_KEY):
+#         return ControllerKeyEnum.PROJECT_INPUT
+#     elif label in ('FIFO_DATA', FIFO_DATA_KEY):
+#         return ControllerKeyEnum.FIFO_DATA
+#     else:
+#         raise Exception()  
+
+class BaseControllerKeyEnum(enum.Enum):
+  pass
 
 class ControllerDataScopes(enum.Enum):
   ALL_IN_SESSION = 0

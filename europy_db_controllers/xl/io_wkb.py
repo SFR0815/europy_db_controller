@@ -23,7 +23,7 @@ CT = typing.TypeVar("CT", bound=_capsule_base.CapsuleBase)
 
 class IoWorkbook():
   def __init__(self, 
-               subControllerKey: _controller_base.ControllerKeyEnum,
+               subControllerKey: any,
                capsuleTypes: typing.List[type[CT]],
                capsuleList: typing.List[type[CT]],
                validationLocators: typing.List[(str, str)]) -> None:
