@@ -153,6 +153,7 @@ def __addFromDictFunctions(controllerType : type[T],
                   session: sqlalchemy_orm.Session,
                   controllerDict: dict[str, any],
                   persistentMustHaveId: bool = False) -> T:
+    # print(f"[_controller_json.fncFromDict]")
     def ensureSomeControllerKeyInDict() -> None:
       for subControllerType in self._subControllerTypes:
         subControllerKey = subControllerType._key
@@ -220,6 +221,9 @@ def __addFromDictFunctions(controllerType : type[T],
         contentKey = self._keys[contentPos]
         if not contentKey in controllerDict: continue # do nothing if key not present
         contentDict = controllerDict[contentKey]
+        # core_account = controllerDict['core_account']
+        # asset_static_ca = core_account['1']
+        # print(f"  asset>static core_account: {asset_static_ca}")
         for capsuleDict in contentDict.values():
           # Do not try to convert validation list entries into capsules
           if len(capsuleDict) == 1 and 'name' in capsuleDict: continue

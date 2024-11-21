@@ -158,7 +158,7 @@ def addInitMethods(capsuleList: typing.List[T],
                                       func = initMethod)
     setattr(capsuleType, "__init__", initMethodDecorated)
     # Debug output
-    # if capsuleType.__name__ == "AssetClassCapsule":
+    # if capsuleType.__name__ == "CoreAccountCapsule":
     #   print("name of table: ", getattr(table, 'name'))
     #   print("  capsuleClassName: ", capsuleType.__name__)
     #   print("  baseClass       : ", sqlalchemyTableType.__name__)
