@@ -1,6 +1,6 @@
 # from __future__ import annotations
 
-import sys, typing
+import sys, typing, enum
 
 import openpyxl as pxl
 from openpyxl import styles as pxl_sty 
@@ -26,8 +26,10 @@ class IoWorkbook():
                subControllerKey: any,
                capsuleTypes: typing.List[type[CT]],
                capsuleList: typing.List[type[CT]],
-               validationLocators: typing.List[(str, str)]) -> None:
+               validationLocators: typing.List[tuple[str, str]],
+               controllerKeyEnum: enum.Enum) -> None:
     self.subControllerKey = subControllerKey
+    self.controllerKeyEnum = controllerKeyEnum 
     self._capsuleTypes = capsuleTypes
     self._capsuleList = capsuleList
     self.validations = io_val.ValidationSheet(
@@ -46,7 +48,8 @@ class IoWorkbook():
                 subControllerKey = self.subControllerKey,
                 capsuleType = capsuleType,
                 capsuleList = self._capsuleList,
-                validations=self.validations)
+                validations=self.validations,
+                controllerKeyEnum = self.controllerKeyEnum)
       self.ioShts[ioWorkSheet.name] = ioWorkSheet
 
   def save(self,

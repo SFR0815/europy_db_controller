@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import sys, typing, datetime
+import sys, typing, datetime, enum
 
 import sqlalchemy
 from sqlalchemy import schema as sqlalchemy_schema
@@ -27,12 +27,14 @@ CT = typing.TypeVar("CT", bound=_capsule_base.CapsuleBase)
 class IoWorkSheet():
   def __init__(self,
                subControllerKey: _controller_base.ControllerKeyEnum,
+               controllerKeyEnum: enum.Enum,
                capsuleType: type[CT],
                capsuleList: list[type[CT]],
                validations: io_val.ValidationSheet
                # FIXME pass list of validations to be treated in wkb here
                ) -> None:
     self.subControllerKey = subControllerKey
+    self.controllerKeyEnum = controllerKeyEnum
     self.validations = validations
     self._capsuleType: type[CT] = capsuleType
     self._capsuleList: list[type[CT]] = capsuleList
@@ -43,6 +45,7 @@ class IoWorkSheet():
     self.rowControl: row_control.RowControl = row_control.RowControl()
     self.colControl: col_control.ColControl = col_control.ColControl(
                   subControllerKey = subControllerKey,
+                  controllerKeyEnum = self.controllerKeyEnum,
                   capsuleType = self._capsuleType,
                   capsuleList = self._capsuleList,
                   rowControl = self.rowControl,

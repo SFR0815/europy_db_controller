@@ -43,13 +43,15 @@ class DeleteControlColumn(data_column.DataColumn):
   _deleteValidation.errorTitle = 'Bad delete flag'
 
   def __init__(self,
-               subControllerKey: _controller_base.ControllerKeyEnum,
+               subControllerKey: _controller_base.BaseControllerKeyEnum,
+               controllerKeyEnum: any,
                columnNumber: int,
                rowControl: 'row_control.RowControl',
                colControl: 'col_control.ColControl'
                ) -> None:
     super().__init__(label = DELETE_CONTROL_LABEL,
                      subControllerKey = subControllerKey,
+                     controllerKeyEnum = controllerKeyEnum,
                      validation = None,
                      columnNumber = columnNumber,
                      rowControl = rowControl,
@@ -67,7 +69,7 @@ class DeleteControlColumn(data_column.DataColumn):
     self.labelCell.fill = self._patternFill
     self.labelCell.alignment = self._labelAlignment
     self.labelCell.value = self.label
-    if self.subControllerKey == _controller_base.ControllerKeyEnum.ASSET_PRICING:
+    if self.subControllerKey == self.controllerKeyEnum.ASSET_PRICING:
       usedRows = self._rowControl.lastDataRow + self._numberOfRowsPricing
     else:
       usedRows = self._rowControl.lastDataRow + self._numberOfRows

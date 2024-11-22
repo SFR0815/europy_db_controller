@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import sys, typing
+import sys, typing, enum
 
 import sqlalchemy
 from sqlalchemy import orm as sqlalchemy_orm
@@ -156,6 +156,7 @@ class ColControl():
   def __addDeleteControlColumn(self) -> None:
     dCL = delete_cntr_column.DeleteControlColumn(columnNumber = self._width() + self.firstCol,
                                                  subControllerKey = self.subControllerKey,
+                                                 controllerKeyEnum = self.controllerKeyEnum,
                                                  rowControl = self._rowControl,
                                                  colControl = self)
     self.columns[dCL.label] = dCL
@@ -195,7 +196,8 @@ class ColControl():
                              isList = True,
                              relationshipKey = relationshipName)
   def __init__(self,
-               subControllerKey: _controller_base.ControllerKeyEnum,
+               subControllerKey: _controller_base.BaseControllerKeyEnum,
+               controllerKeyEnum: enum.Enum,
                capsuleType: type[CT],
                capsuleList: list[type[CT]],
                rowControl: row_control._rowControl,
@@ -206,6 +208,7 @@ class ColControl():
                relationshipKey: str = None) -> None:
     
     self.subControllerKey = subControllerKey
+    self.controllerKeyEnum = controllerKeyEnum
     self._capsuleType: type[CT] = capsuleType
     self._capsuleList: list[type[CT]] = capsuleList
     self._sqlalchemyType: sqlalchemy_decl.DeclarativeMeta = self._capsuleType.sqlalchemyTableType
@@ -248,6 +251,7 @@ class ColControl():
                  sqlalchemyDataType: str):
     column = data_column.DataColumn(label = label,
                                     subControllerKey = self.subControllerKey,
+                                    controllerKeyEnum = self.controllerKeyEnum,
                                     validation=validation,
                                     columnNumber = self._width() + self.firstCol,
                                     rowControl = self._rowControl,
@@ -261,6 +265,7 @@ class ColControl():
                         relationshipKey: str = None
                         ) -> None:  
     subColControl = ColControl(subControllerKey = self.subControllerKey,
+                               controllerKeyEnum = self.controllerKeyEnum,
                                capsuleType = capsuleType,
                                capsuleList = self._capsuleList,
                                rowControl = self._rowControl,

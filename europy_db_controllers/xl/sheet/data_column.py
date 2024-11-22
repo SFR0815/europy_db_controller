@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import sys, typing, uuid, datetime
+import sys, typing, uuid, datetime, enum
 
 import openpyxl as pxl
 from openpyxl import styles as pxl_sty 
@@ -35,7 +35,8 @@ class DataColumn():
   _labelAlignment = pxl_sty.Alignment(textRotation=90, horizontal = 'center')
   def __init__(self,
                label: str,
-               subControllerKey: _controller_base.ControllerKeyEnum,
+               subControllerKey: _controller_base.BaseControllerKeyEnum,
+               controllerKeyEnum: enum.Enum,
                validation: io_val_col.ValidationColumn,
                columnNumber: int,
                rowControl: 'row_control.RowControl',
@@ -45,6 +46,7 @@ class DataColumn():
                ) -> None:
     self.label: str = label
     self.subControllerKey = subControllerKey
+    self.controllerKeyEnum = controllerKeyEnum
     self.validation = validation
     self._colNo: int = columnNumber
     self.unique = unique
@@ -75,7 +77,7 @@ class DataColumn():
   def dataRangeDelimiters(self) -> typing.Dict[str, int]:
     result = dict[str, int]()
     result['min_row'] = self.columnLabelRow + 1
-    if self.subControllerKey == _controller_base.ControllerKeyEnum.ASSET_PRICING:
+    if self.subControllerKey == self.controllerKeyEnum.ASSET_PRICING:
       result['max_row'] = self._rowControl.lastDataRow + self._numberOfRowsPricing
     else:
       result['max_row'] = self._rowControl.lastDataRow + self._numberOfRows
