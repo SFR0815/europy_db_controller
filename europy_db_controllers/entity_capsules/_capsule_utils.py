@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys, uuid, \
-       types, datetime, sqlalchemy
+       types, datetime, sqlalchemy, enum
 from sqlalchemy.dialects import postgresql as sqlalchemy_pg
 from sqlalchemy import orm as sqlalchemy_orm
 
@@ -25,7 +25,8 @@ dictSqlaToType = {
             sqlalchemy.String: str,
             sqlalchemy.BOOLEAN: bool,
             sqlalchemy.Integer: int,
-            sqlalchemy.INTEGER: int}
+            sqlalchemy.INTEGER: int,
+            sqlalchemy.Enum: enum.Enum}
 
 def getPythonType(sqlalchemyType) -> str:
   try: 
