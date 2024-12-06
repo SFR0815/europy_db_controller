@@ -42,8 +42,7 @@ def __getObjectSetupCode(capsuleType: type[CT],
                          setupFncName: str,
                          callingGlobals) -> str:
   sqlalchemyTableType = capsuleType.sqlalchemyTableType
-  table = sqlalchemyTableType.__table__
-  tableAttrNameDict = _capsule_utils.getDictOfColumnAttributeNamesOfTable(table=table)
+  tableAttrNameDict = _capsule_utils.getDictOfColumnAttributeNamesOfTable(sqlalchemyTableType=sqlalchemyTableType)
   # for columnKey, columnAttrNameDict in tableAttrNameDict.items():
   #   print(f"columnKey: {columnKey}")
   #   for attrKey, attrName in columnAttrNameDict.items():
@@ -75,8 +74,7 @@ def __getObjectSetupCode(capsuleType: type[CT],
     return output
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Definition of the full function head:
-  def getFncHead(table, 
-                 columns) -> str:
+  def getFncHead(columns) -> str:
     output = f"def {setupFncName}(\n" + \
              getCommonInputLines()
     for colNo in range(0, len(columns)):
@@ -115,11 +113,10 @@ def __getObjectSetupCode(capsuleType: type[CT],
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # identification of the column not hidden to the outside
   # print("callingGlobals: ", vars(capsules).keys())
-  nonChangeTrackColumns = _capsule_utils.getNonChangeTrackColumns(table=table,
-                                                                  callingGlobals = callingGlobals) 
+  nonChangeTrackColumns = _capsule_utils.getNonChangeTrackColumns(sqlalchemyTableType = sqlalchemyTableType) 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # The complete function definition:
-  return getFncHead(table = table, columns = nonChangeTrackColumns) + \
+  return getFncHead(columns = nonChangeTrackColumns) + \
          getCodeLines(columns = nonChangeTrackColumns)
 
 def __addSetupMethod(controllerType: type[T],
@@ -129,7 +126,8 @@ def __addSetupMethod(controllerType: type[T],
   setupCode = __getObjectSetupCode(capsuleType = capsuleType,
                                    setupFncName = setupFncName,
                                    callingGlobals = callingGlobals)
-  # print(f"__getObjectSetupCode - {controllerType.__name__}.{capsuleType.__name__}:\n{setupCode}")
+  # if capsuleType.__name__ == "MarketAndForwardTransactionCapsule":
+  #   print(f"setupCode {capsuleType.__name__}: \n{setupCode}")
   exec(setupCode, callingGlobals)
   setupMethod = callingGlobals[setupFncName]
   setupMethodDecorated = _controller_base.cleanAndCloseSession(func = setupMethod)  

@@ -17,33 +17,32 @@ U = typing.TypeVar("U", bound=_capsule_base.CapsuleBase)
 # a. Function ensuring the name of the relationship's entity being consistent between
 #       - the relationship entity's name stored as attribute on the capsule 
 #         (<capsule>.<relationshipNameCapsuleInternalAttr>) AND
-#       - the relationship entity's name available on the sqlalchemy table of 
+#       - the relationship entity's name available on the sqlalchemyTable of 
 #         the relationship's entity 
 #         (<capsule>.sqlalchemyTable.<relationshipName>.name)
 def __ensureConsistentRelationshipName(capsule: T,
-                                       attributeNameDict: dict[str, str]):
-  relationshipNameCapsuleInternalAttr = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
-  relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
+                                       dictAttributeNamingConventions: dict[str, str]):
+  relationshipNameCapsuleInternalAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
+  relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Do nothing if the capsule has no attribute for the relationships name
   #    (no <capsule>.<relationshipNameCapsuleInternalAttr>), 
-  #    i.e. the sqlalchemy table of the relationship does not have a 'name'
+  #    i.e. the sqlalchemyTable of the relationship does not have a 'name'
   #    attribute.
   if hasattr(capsule, relationshipNameCapsuleInternalAttr):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Identify the sqlalchemy table of the relationship's entity
+    # Identify the sqlalchemyTable of the relationship's entity
     with capsule.session.no_autoflush:
       relationshipSqlaTable = getattr(capsule.sqlalchemyTable, relationshipName)
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Exit if the sqlalchemy table of the relationship's entity is not defined yet
+    # Exit if the sqlalchemyTable of the relationship's entity is not defined yet
     if relationshipSqlaTable is None: 
       return 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Identify 
     #    - the relationship entity's name as defined on the capsule 
     #      (as per <capsule>.<relationshipNameCapsuleInternalAttr>) and 
-    #    - the relationship entity's name as defined on the relationship's sqlalchemy 
-    #      table
+    #    - the relationship entity's name as defined on the relationship's sqlalchemyTable
     #      (as per <capsule>.sqlalchemyTable.<relationshipName>.name)
     relationshipNameOnCapsule = getattr(capsule, relationshipNameCapsuleInternalAttr)
     relationshipNameStoredSqla = getattr(relationshipSqlaTable, 'name')
@@ -51,16 +50,15 @@ def __ensureConsistentRelationshipName(capsule: T,
     # If the relationship entity's name on the capsule 
     #    (<capsule>.<relationshipNameCapsuleInternalAttr>)
     #    does not yet have a value assigned, set it equal to the  
-    #    relationship entity's name defined on the relationship's sqlalchemy table
+    #    relationship entity's name defined on the relationship's sqlalchemyTable
     #    (<capsule>.sqlalchemyTable.<relationshipName>.name)
-    # Comment: relationship entity's name defined on the relationship's sqlalchemy table
+    # Comment: relationship entity's name defined on the relationship's sqlalchemyTable
     #          might be 'None' in such case. 
     if relationshipNameOnCapsule is None:
       setattr(capsule, relationshipNameCapsuleInternalAttr, relationshipNameStoredSqla)
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Raise Exception the relationship entity's name on the capsule is not the same
-    #    as the relationship entity's name defined on the relationship's sqlalchemy 
-    #    table
+    #    as the relationship entity's name defined on the relationship's sqlalchemyTable
     else:
       errMsg = f"Inconsistent definition of '{relationshipNameCapsuleInternalAttr}' and " + \
                 f"'name' of '{relationshipName}' on object of type '{type(capsule)}'.\n" + \
@@ -74,32 +72,32 @@ def __ensureConsistentRelationshipName(capsule: T,
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # b. Function ensuring the id of the relationship's entity being consistent between
 #       - the relationship entity's id available as and attribute on the capsule's 
-#         sqlalchemy table 
+#         sqlalchemyTable 
 #         (<capsule>.sqlalchemyTable.<relationshipIdAttr>) AND
-#       - the relationship entity's id available on the sqlalchemy table of 
+#       - the relationship entity's id available on the sqlalchemyTable of 
 #         the relationship's entity 
 #         (<capsule>.sqlalchemyTable.<relationshipName>.id)
 def __ensureConsistentRelationshipId(capsule: T,
-                                     attributeNameDict: dict[str, str]):
-  relationshipIdAttr = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_ID]
-  relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
+                                     dictAttributeNamingConventions: dict[str, str]):
+  relationshipIdAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_ID]
+  relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Raise Exception if the sqlalchemy table of the capsule does not have
+  # Raise Exception if the sqlalchemyTable of the capsule does not have
   #    an attribute providing the relationship's id (see above #b)
   _capsule_shared._raiseExceptionIfNoRelationshipIdOnCapsuleSqlaTable(capsule = capsule,
-                                                       attributeNameDict = attributeNameDict) 
+                                                       dictAttributeNamingConventions = dictAttributeNamingConventions) 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Identify the sqlalchemy table of the relationship's entity
+  # Identify the sqlalchemyTable of the relationship's entity
   with capsule.session.no_autoflush:
     relationshipSqlaTable = getattr(capsule.sqlalchemyTable, relationshipName)
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Exit if the sqlalchemy table of the relationship's entity is not defined yet
+  # Exit if the sqlalchemyTable of the relationship's entity is not defined yet
   if relationshipSqlaTable is None: 
-    # do nothing if no property sqlalchemy table
+    # do nothing if no property sqlalchemyTable
     return 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Identify 
-  #    - the relationship entity's id as defined on the capsule's sqlalchemy table 
+  #    - the relationship entity's id as defined on the capsule's sqlalchemyTable 
   #      (as per <capsule>.sqlalchemyTable.<relationshipIdAttr>) and 
   #    - the relationship entity's id as defined on the relationship's sqlalchemy 
   #      table
@@ -108,12 +106,12 @@ def __ensureConsistentRelationshipId(capsule: T,
     relationshipIdOnCapsule = getattr(capsule.sqlalchemyTable, relationshipIdAttr)
     relationshipIdStoredSqla = getattr(relationshipSqlaTable, 'id')
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # If the relationship entity's id on the capsule's sqlalchemy table 
+  # If the relationship entity's id on the capsule's sqlalchemyTable 
   #    (<capsule>.sqlalchemyTable.<relationshipIdAttr>)
   #    does not yet have a value assigned, set it equal to the  
-  #    relationship entity's id defined on the relationship's sqlalchemy table
+  #    relationship entity's id defined on the relationship's sqlalchemyTable
   #    (<capsule>.sqlalchemyTable.<relationshipName>.id)
-  # Comment: relationship entity's id defined on the relationship's sqlalchemy table
+  # Comment: relationship entity's id defined on the relationship's sqlalchemyTable
   #          might be 'None' in such case. 
   
   # if type(capsule).__name__ == "AssetClassCapsule":
@@ -126,7 +124,7 @@ def __ensureConsistentRelationshipId(capsule: T,
     # If no relationshipIdAttr defined yet -> assign value
     setattr(capsule.sqlalchemyTable, relationshipIdAttr, relationshipIdStoredSqla)
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Raise Exception the relationship entity's id on the capsule's sqlalchemy table
+  # Raise Exception the relationship entity's id on the capsule's sqlalchemyTable
   #    is not the same
   #    as the relationship entity's id defined on the relationship's sqlalchemy 
   #    table
@@ -145,36 +143,36 @@ def __ensureConsistentRelationshipId(capsule: T,
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # c. Function ensuring both 'name' and 'id' consistency:
 def __ensureConsistentRelationship(capsule: T,
-                                   attributeNameDict: dict[str, str]):
-  relationshipNameCapsuleInternalAttr = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
+                                   dictAttributeNamingConventions: dict[str, str]):
+  relationshipNameCapsuleInternalAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
   __ensureConsistentRelationshipId(capsule = capsule,
-                                    attributeNameDict = attributeNameDict)
+                                    dictAttributeNamingConventions = dictAttributeNamingConventions)
   if hasattr(capsule, relationshipNameCapsuleInternalAttr):
     __ensureConsistentRelationshipName(capsule = capsule,
-                                        attributeNameDict = attributeNameDict)
+                                        dictAttributeNamingConventions = dictAttributeNamingConventions)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# d. Function sourcing the relationship entity's sqlalchemy table from db based
+# d. Function sourcing the relationship entity's sqlalchemyTable from db based
 #       upon the relationship entity's id
 def __sourceRelationshipSqlalchemyTableBasedOnId(capsule: T,
-                                                 attributeNameDict: dict[str, str],
+                                                 dictAttributeNamingConventions: dict[str, str],
                                                  relationshipType: type[U]):
-  relationshipIdAttr = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_ID]
+  relationshipIdAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_ID]
   # NOT REQUIRED, SEE BELOW:
-  # relationshipNameCapsuleInternalAttr = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
-  relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
+  # relationshipNameCapsuleInternalAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
+  relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Raise Exception if the sqlalchemy table of the capsule does not have
+  # Raise Exception if the sqlalchemyTable of the capsule does not have
   #    an attribute providing the relationship's id (see above #b)
   _capsule_shared._raiseExceptionIfNoRelationshipIdOnCapsuleSqlaTable(capsule = capsule,
-                                                       attributeNameDict = attributeNameDict)
+                                                       dictAttributeNamingConventions = dictAttributeNamingConventions)
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Identify the relationship entity's id as defined on the capsule's sqlalchemy table 
+  # Identify the relationship entity's id as defined on the capsule's sqlalchemyTable 
   #      (as per <capsule>.sqlalchemyTable.<relationshipIdAttr>)
   relationshipIdOnCapsule = getattr(capsule.sqlalchemyTable, relationshipIdAttr)
   if relationshipIdOnCapsule is not None:      
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # If the relationship entity's id as defined on the capsule's sqlalchemy table 
+    # If the relationship entity's id as defined on the capsule's sqlalchemyTable 
     #      (as per <capsule>.sqlalchemyTable.<relationshipIdAttr>) has some
     #      value assigned, source it from the db
     # Comment: If no such relationship entity is found on the db, this raises an 
@@ -182,8 +180,8 @@ def __sourceRelationshipSqlalchemyTableBasedOnId(capsule: T,
     sqlalchemyTable = relationshipType._queryTableById(
                                 session = capsule.session, 
                                 id = relationshipIdOnCapsule)
-    # Set the attribute <relationshipName> of the capsule's sqlalchemy table
-    #    equal to the relationship entity's sqlalchemy table sourced
+    # Set the attribute <relationshipName> of the capsule's sqlalchemyTable
+    #    equal to the relationship entity's sqlalchemyTable sourced
     setattr(capsule.sqlalchemyTable, relationshipName, sqlalchemyTable)
               # CAN'T BE THE CASE. WHEN UPDATING AND ID OR SQLALCHEMY TABLE
               # ON THE CAPSULE, ALL NON UPDATED ATTRIBUTES OF THE RELATIONSHIP
@@ -200,25 +198,25 @@ def __sourceRelationshipSqlalchemyTableBasedOnId(capsule: T,
     # Ensure name consistency between the 
     #       - the relationship entity's name stored as attribute on the capsule 
     #         (<capsule>.<relationshipNameCapsuleInternalAttr>) AND
-    #       - the relationship entity's name available on the sqlalchemy table of 
+    #       - the relationship entity's name available on the sqlalchemyTable of 
     #         the relationship's entity 
     #         (<capsule>.sqlalchemyTable.<relationshipName>.name)
     # see above #c
     __ensureConsistentRelationshipName(capsule = capsule,
-                                       attributeNameDict = attributeNameDict)    
+                                       dictAttributeNamingConventions = dictAttributeNamingConventions)    
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# e. Function sourcing the relationship entity's sqlalchemy table from db based
+# e. Function sourcing the relationship entity's sqlalchemyTable from db based
 #       upon the relationship entity's name
 def __sourceRelationshipSqlalchemyTableBasedOnName(capsule: T,
-                                                   attributeNameDict: dict[str, str],
+                                                   dictAttributeNamingConventions: dict[str, str],
                                                    relationshipType: type[U]):
-  relationshipNameCapsuleInternalAttr = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
-  relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
+  relationshipNameCapsuleInternalAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
+  relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Do nothing if the capsule has no attribute for the relationships name
   #    (no <capsule>.<relationshipNameCapsuleInternalAttr>), 
-  #    i.e. the sqlalchemy table of the relationship does not have a 'name'
+  #    i.e. the sqlalchemyTable of the relationship does not have a 'name'
   #    attribute.
   if hasattr(capsule, relationshipNameCapsuleInternalAttr):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -243,55 +241,55 @@ def __sourceRelationshipSqlalchemyTableBasedOnName(capsule: T,
       elif len(sqlalchemyTables) > 1:
         capsule._raiseException(f"Multiple entities of '{relationshipName}' on object " + \
                         f"of type '{type(capsule)}' with identical name: {relationshipNameOnCapsule}")
-      # Set the attribute <relationshipName> of the capsule's sqlalchemy table
-      #    equal to the relationship entity's sqlalchemy table sourced
+      # Set the attribute <relationshipName> of the capsule's sqlalchemyTable
+      #    equal to the relationship entity's sqlalchemyTable sourced
       sqlalchemyTable = sqlalchemyTables[0]
       setattr(capsule.sqlalchemyTable, relationshipName, sqlalchemyTable)
       # Ensure name consistency between the 
-      #       - the relationship entity's id available on the capsule's sqlalchemy table 
+      #       - the relationship entity's id available on the capsule's sqlalchemyTable 
       #         (<capsule>.sqlalchemyTable.<relationshipIdAttr>) AND
-      #       - the relationship entity's id available on the sqlalchemy table of 
+      #       - the relationship entity's id available on the sqlalchemyTable of 
       #         the relationship's entity 
       #         (<capsule>.sqlalchemyTable.<relationshipName>.id)
       # see above #d
       __ensureConsistentRelationshipId(capsule = capsule,
-                                       attributeNameDict = attributeNameDict)
+                                       dictAttributeNamingConventions = dictAttributeNamingConventions)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # f. Function ensuring the relationship entity's sqlalchemy is consistent with
 #       the capsule's relationship entity's id and name definitions AND
 #       present if such relationship entity is defined on db
 def __ensureConsistentRelationshipSqlalchemyTable(capsule: T,
-                                                attributeNameDict: dict[str, str],
+                                                dictAttributeNamingConventions: dict[str, str],
                                                 relationshipType: type[U]):
-  relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
+  relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Identify the sqlalchemy table of the relationship's entity
+  # Identify the sqlalchemyTable of the relationship's entity
   relationshipSqlaTable = getattr(capsule.sqlalchemyTable, relationshipName)
   if relationshipSqlaTable is None:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # If the relationship entity's sqlalchemy table is not defined yet, 
+    # If the relationship entity's sqlalchemyTable is not defined yet, 
     #    try to identify via the capsule's relationship entity id (see above #e)
-    # Comment: This does nothing if the capsule sqlalchemy table's relationship id  
+    # Comment: This does nothing if the capsule sqlalchemyTable's relationship id  
     #          (<capsule>.sqlalchemyTable.<relationshipIdAttr>) is 'None'
     __sourceRelationshipSqlalchemyTableBasedOnId(capsule = capsule,
-                                                 attributeNameDict = attributeNameDict,
+                                                 dictAttributeNamingConventions = dictAttributeNamingConventions,
                                                  relationshipType = relationshipType)
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # If the relationship entity's sqlalchemy table has not been identified
+    # If the relationship entity's sqlalchemyTable has not been identified
     #    based on id (see above), 
     #    try to identify via the capsule's relationship entity name (see above #f)
     # Comment: This does nothing if the capsule's relationship name  
     #          (<capsule>.<relationshipNameCapsuleInternalAttr>) is 'None'
     if getattr(capsule.sqlalchemyTable, relationshipName) is None:
       __sourceRelationshipSqlalchemyTableBasedOnName(capsule = capsule,
-                                                     attributeNameDict = attributeNameDict,
+                                                     dictAttributeNamingConventions = dictAttributeNamingConventions,
                                                      relationshipType = relationshipType)
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Ensure name and id consistency between definitions on the capsule and the 
-    #    relationship entity's sqlalchemy table (if the latter is defined),
+    #    relationship entity's sqlalchemyTable (if the latter is defined),
     #    see above #c & #b
-    # Comment: This does nothing if the sqlalchemy table of the relationship's entity
+    # Comment: This does nothing if the sqlalchemyTable of the relationship's entity
     #          (<capsule>.sqlalchemyTable.<relationshipName>) is 'None'
     nameOfConsistencyFnc = _capsule_utils.getConsistencyCheckFncName(
                                     relationshipName = relationshipName)
@@ -302,7 +300,7 @@ def __ensureConsistentRelationshipSqlalchemyTable(capsule: T,
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 1. Adding the consistency test of the relationship
 def __addConsistencyCheck(capsuleType: type[T],
-                        attributeNameDict: dict[str, str]):
+                        dictAttributeNamingConventions: dict[str, str]):
   def fncConsistencyCheck(self: T):
     
     # if type(self).__name__ == "AssetClassCapsule":
@@ -310,8 +308,8 @@ def __addConsistencyCheck(capsuleType: type[T],
     #   print(f"    capsule.sqlalchemyTable: \n{self.sqlalchemyTable}                ")
     
     __ensureConsistentRelationship(capsule = self,
-                                   attributeNameDict = attributeNameDict)
-  relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]  
+                                   dictAttributeNamingConventions = dictAttributeNamingConventions)
+  relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]  
   nameOfFnc = _capsule_utils.getConsistencyCheckFncName(
                                    relationshipName = relationshipName)
   fncConsistencyCheckDecorated = _capsule_base.cleanAndCloseSession(
@@ -320,13 +318,13 @@ def __addConsistencyCheck(capsuleType: type[T],
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 2. Adding the conditional sourcing with consistency test of the relationship
 def __addConditionalSourcingWithConsistency(capsuleType: type[T],
-                                          attributeNameDict: dict[str, str],
+                                          dictAttributeNamingConventions: dict[str, str],
                                           relationshipType: type[U]):
   def fncSourceAndTestForConsistency(self: T):
     __ensureConsistentRelationshipSqlalchemyTable(capsule = self,
-                                                  attributeNameDict = attributeNameDict,
+                                                  dictAttributeNamingConventions = dictAttributeNamingConventions,
                                                   relationshipType = relationshipType)
-  relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]  
+  relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]  
   nameOfFnc = _capsule_utils.getSourceAndConsistencyCheckFncName(
                                   relationshipName = relationshipName)
   fncSourceAndTestForConsistencyDecorated = _capsule_base.cleanAndCloseSession(
@@ -364,22 +362,21 @@ def addRelationshipConsistencyChecks(capsuleList: typing.List[T],
                                      callingGlobals):
   for capsuleType in capsuleList:
     sqlalchemyTableType = capsuleType.sqlalchemyTableType
-    table = sqlalchemyTableType.__table__
     relationshipNames: typing.List[str] = []
-    for column in table.columns:
+    for column in sqlalchemyTableType.__table__.columns:
       if _capsule_utils.isRelationshipIdColumn(column=column):
-        attributeNameDict = _capsule_utils.getDictOfRelationshipAttrName(
-                        column = column)
-        relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
+        relationshipName = _capsule_utils.getRelationshipNameOfColumn(column = column)
+        dictAttributeNamingConventions = _capsule_utils.getDictOfAttributeNamingConventionsFromRelationshipName(
+                        relationshipName = relationshipName)
         relationshipType = _capsule_utils.getRelationshipCapsuleTypeOfName(
                         relationshipName = relationshipName,
-                        table = table,
+                        sqlalchemyTableType = sqlalchemyTableType,
                         callingGlobals = callingGlobals)
         relationshipNames.append(relationshipName)
         __addConsistencyCheck(capsuleType = capsuleType,
-                            attributeNameDict = attributeNameDict) 
+                            dictAttributeNamingConventions = dictAttributeNamingConventions) 
         __addConditionalSourcingWithConsistency(capsuleType = capsuleType,
-                                              attributeNameDict = attributeNameDict,
+                                              dictAttributeNamingConventions = dictAttributeNamingConventions,
                                               relationshipType = relationshipType)
     __addOverAllConsistencyCheck(capsuleType = capsuleType,
                                relationshipNames = relationshipNames)      

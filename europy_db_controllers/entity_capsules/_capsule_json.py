@@ -2,6 +2,7 @@ import json, typing, uuid, datetime
 
 import sqlalchemy as sqla
 from sqlalchemy import orm as sqlalchemy_orm
+from sqlalchemy.ext import declarative as sqlalchemy_decl
 
 from . import _capsule_base
 from . import _capsule_utils
@@ -26,10 +27,8 @@ def __addToJsonFunction(capsuleType: type[T],
                 omitIds: bool = False) -> dict[str, any]:
     result = {}
     sqlalchemyTableType = self.sqlalchemyTableType
-    table = sqlalchemyTableType.__table__
     noJsonFields = sqlalchemyTableType._exclude_from_json
-    noChangeTrackColumns = _capsule_utils.getNonChangeTrackColumns(table = table,
-                                                                  callingGlobals = callingGlobals)
+    noChangeTrackColumns = _capsule_utils.getNonChangeTrackColumns(sqlalchemyTableType = sqlalchemyTableType)
     for column in noChangeTrackColumns:
       columnName = column.name 
       if columnName in noJsonFields:
@@ -38,12 +37,12 @@ def __addToJsonFunction(capsuleType: type[T],
         isRelationshipColumn = _capsule_utils.isRelationshipIdColumnName(columnName = columnName)
         isIdColumn = columnName == 'id'
         if isRelationshipColumn:
-          relationship = _capsule_utils.getRelationship(table = table,
+          relationship = _capsule_utils.getRelationship(sqlalchemyTableType = sqlalchemyTableType,
                                                         column = column,
                                                         callingGlobals = callingGlobals)
-          relationshipCapsuleType = _capsule_utils.getRelationshipCapsuleTypeOfName(
+          relationshipCapsuleType = _capsule_utils.getRelationshipCapsuleTypeOfName( 
                                                         relationshipName = relationship.key, 
-                                                        table = table, 
+                                                        sqlalchemyTableType = sqlalchemyTableType, 
                                                         callingGlobals = callingGlobals)
           if hasattr(relationshipCapsuleType, 'name'):
             relationshipEntityNameAttributeName = _capsule_utils.convertRelationshipNameToNameField(
@@ -232,20 +231,21 @@ def __addFromJsonFunction(capsuleType: type[T],
                   session: sqlalchemy_orm.Session,
                   capsuleDict: dict[str, any],
                   relationshipEntitiesCatalog: typing.Dict[str, dict],
-                  table: sqla.Table,
+                  sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMeta],
                   column: sqla.Column,
                   resultEntity: capsuleType
                   ) -> None :
-      dictAttributeNamingConventions = _capsule_utils.getDictOfRelationshipAttrName(column = column)
-      relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
+      relationshipName = _capsule_utils.getRelationshipNameOfColumn(column = column)
+      dictAttributeNamingConventions = _capsule_utils.getDictOfAttributeNamingConventionsFromRelationshipName(
+                      relationshipName = relationshipName)
       ## 
       ## add relationshipName to relationshipEntitiesCatalog:
       if not relationshipName in relationshipEntitiesCatalog:
         relationshipEntitiesCatalog[relationshipName] = {}
       ##
       relationshipCapsuleClass = _capsule_utils.getRelationshipCapsuleTypeOfName(
-                      relationshipName = relationshipName,
-                      table = table,
+                       relationshipName = relationshipName,
+                      sqlalchemyTableType = sqlalchemyTableType,
                       callingGlobals = callingGlobals)
       relationshipNameAttributeName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_NAME]
       if relationshipName in capsuleType.sqlalchemyTableType._exclude_from_json:
@@ -292,9 +292,10 @@ def __addFromJsonFunction(capsuleType: type[T],
                   relationship: sqlalchemy_orm.relationship,
                   resultEntity: capsuleType) -> None:
       relationshipName = relationship.key
+      sqlalchemyTableType = capsuleType.sqlalchemyTableType
       relationshipCapsuleClass = _capsule_utils.getRelationshipCapsuleTypeOfName(
                       relationshipName = relationshipName,
-                      table = table,
+                      sqlalchemyTableType = sqlalchemyTableType,
                       callingGlobals = callingGlobals)
       appendToListFncName = _capsule_utils.getAppendToListOfPropertyFncName(
                 relationshipName = relationshipName)
@@ -314,15 +315,12 @@ def __addFromJsonFunction(capsuleType: type[T],
     ## Initiate if relationshipEntitiesCatalog is provided:
     if relationshipEntitiesCatalog is None:
       relationshipEntitiesCatalog: typing.Dict[str, dict] = {}
-    ## Identify the object class of the table
+    ## Identify the object class of the sqlalchemyTableType
     sqlalchemyTableType = self.sqlalchemyTableType
-    ## Identify the sqlalchemy table
-    table = sqlalchemyTableType.__table__
     ## Identify the fields that are excluded from json
     noJsonFields = sqlalchemyTableType._exclude_from_json
     ## Identify the columns that are not merely used for change tracking
-    noChangeTrackColumns = _capsule_utils.getNonChangeTrackColumns(table = table,
-                                                                  callingGlobals = callingGlobals)
+    noChangeTrackColumns = _capsule_utils.getNonChangeTrackColumns(sqlalchemyTableType = sqlalchemyTableType)
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Define inputs to __init__
     #     - this does NOT include any relationships 
@@ -330,7 +328,7 @@ def __addFromJsonFunction(capsuleType: type[T],
     #       - in case of validations that are made upon relationships, this will cause
     #         the validation to fail, as the relationships are not yet initialized
     # [2027-10-04] - decision taken on CoreAccountTable: 
-    #       - include another column in the table (level_depth)
+    #       - include another column in the sqlalchemyTableType (level_depth)
     #       - condition the is_bookable validation on the level_depth value
     #       
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -392,126 +390,9 @@ def __addFromJsonFunction(capsuleType: type[T],
                         session = session,
                         capsuleDict = capsuleDict,
                         relationshipEntitiesCatalog = relationshipEntitiesCatalog,
-                        table = table,
+                        sqlalchemyTableType = sqlalchemyTableType,
                         column = column,
                         resultEntity = result)
-          # # print(f"   RelationshipColumn: {columnName}")
-          # dictAttributeNamingConventions = _capsule_utils.getDictOfRelationshipAttrName(column = column)
-          # relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
-          # ## 
-          # ## add relationshipName to relationshipEntitiesCatalog:
-          # if not relationshipName in relationshipEntitiesCatalog:
-          #   relationshipEntitiesCatalog[relationshipName] = {}
-          # ##
-          # relationshipCapsuleClass = _capsule_utils.getRelationshipCapsuleTypeOfName(
-          #                 relationshipName = relationshipName,
-          #                 table = table,
-          #                 callingGlobals = callingGlobals)
-          # relationshipNameAttributeName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_NAME]
-          # if relationshipName in capsuleType.sqlalchemyTableType._exclude_from_json:
-          #   # 
-          #   # Identify the dictionary of previously identified relationship entities:
-          #   thisRelationshipEntitiesCatalog = relationshipEntitiesCatalog[relationshipName]
-          #   # Relationship is not available on the dict as as sub-dict
-          #   #   but is identified by it's name
-          #   #   Such name must be identifiable on the db (or as new/dirty)
-          #   if hasattr(relationshipCapsuleClass, 'name'):
-          #     ensureKeyInDict(key = relationshipNameAttributeName)
-          #     relationshipEntityName = capsuleDict[relationshipNameAttributeName]
-          #     # relationshipEntityName might not be defined -> do nothing
-          #     if relationshipEntityName is None: continue
-          #     if not relationshipEntityName in thisRelationshipEntitiesCatalog:
-          #       # check if an entity with the relationship's name exists on db
-          #       #     if yes: include the the relationshipEntity in the catalog of relationship entities
-          #       #     if  no: do not include as it will cause and error
-          #       if not relationshipCapsuleClass.nameExists(
-          #                         session=session, 
-          #                         name=relationshipEntityName):
-          #         jsonSpec = json.dumps(capsuleDict, cls=UUIDEncoder, indent = 4)
-          #         raise Exception(f"Badly specified relationship name on {capsuleType.__name__}:\n" + \
-          #                         f"No relationship with such name identified on db or session.\n" + \
-          #                         f"Relationship           : {relationshipName}\n" + \
-          #                         f"Name provided          : {relationshipEntityName}\n" + \
-          #                         f"Provided on attribute  : {relationshipNameAttributeName}\n" + \
-          #                         f"json spec: \n" + \
-          #                           jsonSpec)
-          #       else:
-          #         relationshipEntity = relationshipCapsuleClass(
-          #                         session = session, 
-          #                         name = relationshipEntityName)
-          #         ## 
-          #         ## add relationshipEntity to catalog
-          #         # print(f"    adding relationshipEntity of name '{relationshipEntityName}' to catalog")
-          #         thisRelationshipEntitiesCatalog[relationshipEntityName] = relationshipEntity
-
-
-          #     ##
-          #     ## Identify the relationshipEntity from the catalog of relationship entities
-          #     relationshipEntity = thisRelationshipEntitiesCatalog[relationshipEntityName]
-          #     ##
-          #     setattr(result, relationshipName, relationshipEntity) 
-          #   continue # no relationship defined in dict
-          # else:
-          #   # Relationship is available as a sub-dict within the capsuleDict provided
-          #   ensureKeyInDict(key = relationshipName)
-          #   relationshipDict = capsuleDict[relationshipName]
-          #   # print(f"   relationshipDict: {relationshipDict}")      
-          #   # if no relationship defined on capsuleDict -> do nothing
-          #   if relationshipDict is None or len(relationshipDict) == 0: continue 
-          #   # identify if relationship has been identified in previous initialization of 
-          #   #   the capsule, see above [result = capsuleType(**initParameters)]
-          #   isIdentifiedRelationship = not getattr(result, relationshipName) is None
-          #   if isIdentifiedRelationship:
-          #     idOnRelationshipDict = relationshipDict['id']
-          #     relationshipIdOnMainCapsule = getattr(result, columnName)
-          #     # if relationship is not identified by name but by id check id consistency
-          #     if not idOnRelationshipDict is None:
-          #       if type(idOnRelationshipDict) is uuid.UUID:
-          #         idOnRelationshipDict = str(idOnRelationshipDict)
-          #       if idOnRelationshipDict != str(relationshipIdOnMainCapsule):
-          #         # raise exception if the id of the relationship in dict is different from the 
-          #         #   id in the relationship's id on the identified entity
-          #         jsonSpec = json.dumps(capsuleDict, cls=UUIDEncoder, indent = 4)
-          #         raise Exception(f"Badly specified relationship id on {capsuleType.__name__}:\n" + \
-          #                         f"Id on capsule: {relationshipIdOnMainCapsule} - type: {type(relationshipIdOnMainCapsule)}\n" + \
-          #                         f"Id on relationship dict: {idOnRelationshipDict} - type: {type(idOnRelationshipDict)}\n" + \
-          #                         f"Name of relationship: {relationshipName}\n" + \
-          #                         f"json spec: \n" + \
-          #                           jsonSpec)
-          #         # FIXME: spec test for this error
-          #     # if relationship has a name: check if name is not consistent with the relationships 
-          #     #    name on db.
-          #     #    Changing names of relationships is not permissible when creating the parent 
-          #     #    entity form a dict.  
-          #     if hasattr(relationshipCapsuleClass, 'name'):
-          #       nameOnRelationshipDict = relationshipDict['name']
-          #       relationshipNameOnMainCapsule = getattr(result, relationshipNameAttributeName)
-          #       if nameOnRelationshipDict != relationshipNameOnMainCapsule:
-          #         # raise exception if the name of the relationship in dict is different from the 
-          #         #   name in the relationship's id on the identified entity
-          #         jsonSpec = json.dumps(capsuleDict, cls=UUIDEncoder, indent = 4)
-          #         raise Exception(f"Badly specified relationship name on {capsuleType.__name__}:\n" + \
-          #                         f"Name on capsule: {relationshipNameOnMainCapsule}\n" + \
-          #                         f"Name on relationship dict: {nameOnRelationshipDict}\n" + \
-          #                         f"json spec: \n" + \
-          #                           jsonSpec)
-          #         # FIXME: spec test for this error
-          #     else:
-          #       # set the id parameter of the relationship (if none) as provided in the dict
-          #       #     equal to the one identified on DB
-          #       relationshipDict['id'] = relationshipIdOnMainCapsule
-          #     relationshipEntity = getattr(relationshipCapsuleClass, nameOfDictFnc)(
-          #                     session = session, 
-          #                     capsuleDict = relationshipDict)
-          #     relationshipEntity.addToSession()
-          #     setattr(result, relationshipName, relationshipEntity)
-          #   else:
-          #     # print('     relationship dict: ', relationshipDict)
-          #     relationshipEntity = getattr(relationshipCapsuleClass, nameOfDictFnc)(
-          #                     session = session,
-          #                     capsuleDict = relationshipDict)
-          #     relationshipEntity.addToSession()
-          #     setattr(result, relationshipName, relationshipEntity)
 
     # append values to manipulation lists
     for relationship in sqlalchemyTableType.__mapper__.relationships:
@@ -519,31 +400,7 @@ def __addFromJsonFunction(capsuleType: type[T],
                                 session = session,
                                 capsuleDict = capsuleDict,
                                 relationship = relationship,
-                                resultEntity = result)
-      # relationshipCapsuleClass = _capsule_utils.getRelationshipCapsuleTypeOfName(
-      #                 relationshipName = relationshipName,
-      #                 table = table,
-      #                 callingGlobals = callingGlobals)
-      # # if not relationshipName in noJsonFields:
-      # if relationship.uselist:
-      #   sqlalchemyTableType = capsuleType.sqlalchemyTableType
-      #   isDisplayList = _capsule_utils.isDisplayList(sqlalchemyTableType = sqlalchemyTableType,
-      #                                               relationship = relationship)
-      #   if not isDisplayList:
-      #     ensureKeyInDict(key = relationshipName)
-      #     appendToListFncName = _capsule_utils.getAppendToListOfPropertyFncName(
-      #               relationshipName = relationshipName)
-      #     listDictionary = capsuleDict[relationshipName]
-      #     if len(listDictionary) == 0:
-      #       pass
-      #     else:
-      #       for pos in range(0, len(capsuleDict[relationshipName])):
-      #         capsuleDictEntity = capsuleDict[relationshipName][pos]
-      #         relationshipEntity = getattr(relationshipCapsuleClass, nameOfDictFnc)(
-      #                   session = session,
-      #                   capsuleDict = capsuleDict[relationshipName][pos])
-      #         getattr(result, appendToListFncName)(relationshipEntity)     
-              
+                                resultEntity = result)           
     result.addToSession()
     return result
     

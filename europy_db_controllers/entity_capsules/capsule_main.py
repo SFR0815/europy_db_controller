@@ -15,16 +15,16 @@ def setupCapsules(declarativeBase: sqla_orm.DeclarativeBase,
   for key, table in declarativeBase.metadata.tables.items():
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # a. Capsule class definition:
-    capsuleClassName = _capsule_utils.getCapsuleClassName(table)
-    capsuleBaseClass = _capsule_base.CapsuleBaseWithName if _capsule_utils.hasName(table) else \
+    sqlalchemyTableTypeName = _capsule_utils.getSqlalchemyTableTypeName(table = table)
+    sqlalchemyTableType = callingGlobals[sqlalchemyTableTypeName]
+    capsuleClassName = _capsule_utils.getCapsuleClassName(sqlalchemyTableType = sqlalchemyTableType)
+    capsuleBaseClass = _capsule_base.CapsuleBaseWithName if _capsule_utils.hasName(sqlalchemyTableType) else \
               _capsule_base.CapsuleBase
     capsuleType = types.new_class(capsuleClassName, (capsuleBaseClass,), {})
     callingGlobals[capsuleClassName] = capsuleType
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # b. Setting the attribute of the type of the sqlalchemy table represented by the capsule
+    # b. Setting the attribute of the type of the sqlalchemyTable represented by the capsule
     #    ('sqlalchemyTableType')
-    sqlalchemyTableTypeName = _capsule_utils.getSqlalchemyTableTypeName(table)
-    sqlalchemyTableType = callingGlobals[sqlalchemyTableTypeName]
     setattr(capsuleType, 'sqlalchemyTableType', sqlalchemyTableType)
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # c. Log capsule object to capsule list:

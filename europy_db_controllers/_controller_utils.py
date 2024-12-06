@@ -22,6 +22,27 @@ def __getFilterFunction(filterConditions: typing.Dict[str, any]
                         ) -> typing.Callable[[sqlalchemy_decl.DeclarativeMeta], bool]:
   def innerFilterFunction(sqlalchemyTable: sqlalchemy_decl.DeclarativeMeta) -> bool:
     for filterAttributeName, filterAttributeValue in filterConditions.items():
+      # Split attribute path by dots
+      attributePath = filterAttributeName.split('.')
+      
+      # Start with the sqlalchemy table
+      currentObj = sqlalchemyTable
+      
+      # Follow the attribute path except for last element
+      for attr in attributePath[:-1]:
+        if not hasattr(currentObj, attr):
+            path = '.'.join(attributePath[:attributePath.index(attr)])
+            raise AttributeError(f"Cannot find attribute '{attr}' in filter path '{filterAttributeName}'. "
+                               f"Search failed at '{path}' on object of type {type(currentObj).__name__}. "
+                               f"Original sqlalchemy table type: {type(sqlalchemyTable).__name__}")
+        currentObj = getattr(currentObj, attr)
+        if currentObj is None:
+          return False
+          
+      # Compare final attribute value
+      finalAttr = attributePath[-1]
+      if getattr(currentObj, finalAttr) != filterAttributeValue:
+        return False
       if getattr(sqlalchemyTable, filterAttributeName) != filterAttributeValue: return False
     return True
   return innerFilterFunction
@@ -106,7 +127,19 @@ def getDbSqlalchemyTables(
   dbQuery = session.query(sqlalchemyTableType)
   if not filterConditions is None:
     for filterAttributeName, filterAttributeValue in filterConditions.items():
-      dbQuery = dbQuery.filter(getattr(sqlalchemyTableType, filterAttributeName) == filterAttributeValue)
+      # Split attribute path by dots
+      attributePath = filterAttributeName.split('.')
+      currentType = sqlalchemyTableType
+      currentAttr = None
+      
+      # Navigate through the attribute path
+      for attrName in attributePath:
+        currentAttr = getattr(currentType, attrName)
+        # Get the type of the next level if not at end
+        if hasattr(currentAttr, 'property') and hasattr(currentAttr.property, 'mapper'):
+          currentType = currentAttr.property.mapper.class_
+      
+      dbQuery = dbQuery.filter(currentAttr == filterAttributeValue)
   with session.no_autoflush:
     dbSqlalchemyTables = dbQuery.all()
   for dbSqlalchemyTable in dbSqlalchemyTables:

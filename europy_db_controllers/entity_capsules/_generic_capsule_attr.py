@@ -19,23 +19,23 @@ class __RelationshipPropertyEnum(enum.Enum):
   ID = 0
   NAME_INTERNAL = 1
   SQLALCHEMY_TABLE = 2
-# Setting values to relationship attributes on a capsule (& resp. sqlalchemy tables) general 
+# Setting values to relationship attributes on a capsule (& resp. sqlalchemy bbles) general 
 #   function
 def __setRelationshipAttributeValuesMain(self: T,
-                                         attributeNameDict: dict[str, str],
+                                         dictAttributeNamingConventions: dict[str, str],
                                          sqlaId: uuid.UUID,
-                                         sqlaTable: sqlalchemy_decl.DeclarativeMeta,
+                                         sqlalchemyTable: sqlalchemy_decl.DeclarativeMeta,
                                          name: str):
-  relationshipIdAttr = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_ID]
-  relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
-  relationshipNameCapsuleInternalAttr = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
-  if sqlaTable is not None:
-    if hasattr(sqlaTable, 'name'):
-      name = getattr(sqlaTable, 'name')
-    sqlaId = getattr(sqlaTable, 'id')
+  relationshipIdAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_ID]
+  relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
+  relationshipNameCapsuleInternalAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
+  if sqlalchemyTable is not None:
+    if hasattr(sqlalchemyTable, 'name'):
+      name = getattr(sqlalchemyTable, 'name')
+    sqlaId = getattr(sqlalchemyTable, 'id')
   if hasattr(type(self), relationshipNameCapsuleInternalAttr):
     setattr(self, relationshipNameCapsuleInternalAttr, name) 
-  setattr(self.sqlalchemyTable, relationshipName, sqlaTable)
+  setattr(self.sqlalchemyTable, relationshipName, sqlalchemyTable)
   setattr(self.sqlalchemyTable, relationshipIdAttr, sqlaId)
   fncNameSourceAndConsistency = _capsule_utils.getSourceAndConsistencyCheckFncName(
                                 relationshipName = relationshipName)
@@ -55,17 +55,17 @@ def __getRelationshipAttributeValues(value: typing.Union[uuid.UUID, sqlalchemy_d
 # Setting values to relationship attributes on a capsule (& resp. sqlalchemy tables) based on 
 #    enumeration of relationship attributes
 def setRelationshipAttributeValues(self: T,
-                                   attributeNameDict: dict[str, str],
+                                   dictAttributeNamingConventions: dict[str, str],
                                    value: typing.Union[uuid.UUID, sqlalchemy_decl.DeclarativeMeta, str],
                                    valueType: __RelationshipPropertyEnum):
   valueList = __getRelationshipAttributeValues(value = value,
                                                valueType = valueType)
   __setRelationshipAttributeValuesMain(self = self,
-                                       attributeNameDict = attributeNameDict,
+                                       dictAttributeNamingConventions = dictAttributeNamingConventions,
                                        sqlaId = valueList[__RelationshipPropertyEnum.ID.value],
-                                       sqlaTable = valueList[__RelationshipPropertyEnum.SQLALCHEMY_TABLE.value],
+                                       sqlalchemyTable = valueList[__RelationshipPropertyEnum.SQLALCHEMY_TABLE.value],
                                        name = valueList[__RelationshipPropertyEnum.NAME_INTERNAL.value])
-# Check whether a relationship's sqlalchemy table modified an object
+# Check whether a relationship's sqlalchemyTable modified an object
 def isModifyingObject(parentObj: T, 
                       childObj: U, 
                       relationshipName: str) -> bool:
@@ -98,13 +98,21 @@ def addDataColumnAttributes(capsuleList: typing.List[T],
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # a. the function setting getter, setter and omit if None
   def addSetterAndGetter(capsuleType: type[T], 
-                         attributeName: str):
+                         attributeInfo: typing.List[typing.Union[str, bool]]):
+
+    doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
+    if doPrint:
+      print(f"addDataColumnAttributes {capsuleType.__name__}")
+
+  
+    attributeName = attributeInfo[0]
+    hasSetter = attributeInfo[2]
     def getterFnc(self):
       return getattr(self.sqlalchemyTable, attributeName)
     def setterFnc(self, value):
       # Check if the attribute has a validator
       if hasattr(self.sqlalchemyTable, f'validate_{attributeName}'):
-        # If the table is not in the session, add it
+        # If the sqlalchemyTable is not in the session, add it
         if self.sqlalchemyTable not in self.session:
           self.session.add(self.sqlalchemyTable)
         # Call the validator
@@ -117,13 +125,24 @@ def addDataColumnAttributes(capsuleList: typing.List[T],
     def omitNonFnc(self, value):
       if value is None: return # do nothing if value is 'None'
       setattr(self, attributeName, value)
+    # add getter
+
+    if doPrint:
+      print(f"    implementing getterFnc: {attributeName}")
+
     propertyGetter = property(_capsule_base.cleanAndCloseSession(getterFnc))
-    propertySetter = propertyGetter.setter(_capsule_base.cleanAndCloseSession(setterFnc))
     setattr(capsuleType, attributeName, propertyGetter)
-    setattr(capsuleType, attributeName, propertySetter)
-    omitNoneFncName = _capsule_utils.getOmitIfNoneFncName(
-            attributeName = attributeName)
-    setattr(capsuleType, omitNoneFncName, _capsule_base.cleanAndCloseSession(omitNonFnc)) 
+    # add setter and omitNone if and only if <hasSetter> is True
+
+    if doPrint:
+      print(f"    implementing setterFnc: {attributeName}")
+
+    if hasSetter:
+      propertySetter = propertyGetter.setter(_capsule_base.cleanAndCloseSession(setterFnc))
+      setattr(capsuleType, attributeName, propertySetter)
+      omitNoneFncName = _capsule_utils.getOmitIfNoneFncName(
+              attributeName = attributeName)
+      setattr(capsuleType, omitNoneFncName, _capsule_base.cleanAndCloseSession(omitNonFnc)) 
   def addHybridGetter(capsuleType: type[T], 
                       attributeName: str):
     def getterFnc(self):
@@ -131,28 +150,54 @@ def addDataColumnAttributes(capsuleList: typing.List[T],
     propertyGetter = property(_capsule_base.cleanAndCloseSession(getterFnc))
     setattr(capsuleType, attributeName, propertyGetter)
   for capsuleType in capsuleList:
-    table = capsuleType.sqlalchemyTableType.__table__
-    #    Only columns not hidden for internal processing (change tracking)
-    columns = _capsule_utils.getNonChangeTrackColumns(table = table,
-                                                      callingGlobals = callingGlobals)
-    for column in columns:
-      columnName = column.name
-      if columnName not in ['id', 'name']:
-        # exclude in addition:
-        #    - columns on which properties are set by CapsuleBase 
-        #      (see module _capsule_base)
-        #    - columns whose name complies with relationship naming conventions
-        #      (see module _capsule_utils)
-        isBaseColumn = _capsule_utils.isBaseColumn(capsuleType = capsuleType,
-                                                  column = column)
-        isRelationshipIdColumn = _capsule_utils.isRelationshipIdColumn(column)
-        if not (isBaseColumn or isRelationshipIdColumn):
-          addSetterAndGetter(capsuleType=capsuleType, attributeName=column.name)
-      else:
-        pass
-    for key, objType in vars(capsuleType.sqlalchemyTableType).items():
-      if isinstance(objType, sqlalchemy_hyb.hybrid_property):
-        addHybridGetter(capsuleType=capsuleType, attributeName=key)
+
+    doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
+    if doPrint:
+      print(f"addDataColumnAttributes {capsuleType.__name__}")
+
+    # getSqlalchemyColumnsAndColumnLikeProperties(capsuleType = capsuleType) 
+    #       -> dict{<nameOfItem>: [<nameOfItem>, <isHybridProperty>, <hasSetter]}
+    sqlalchemyColumnsAndColumnLikeProperties = _capsule_utils.getSqlalchemyColumnsAndColumnLikeProperties(
+                                                capsuleType = capsuleType)  
+    for attributeName, attributeInfo in sqlalchemyColumnsAndColumnLikeProperties.items():
+      noHybridProperty = not attributeInfo[1]
+      isRelationshipIdColumn = _capsule_utils.isRelationshipIdColumnName(columnName = attributeName)
+
+      if doPrint:
+        print(f"\n    attributeInfo: {attributeName} {attributeInfo} isRelationshipIdColumn: {isRelationshipIdColumn} noHybridProperty: {noHybridProperty}")
+        print(f"      continue? {isRelationshipIdColumn or noHybridProperty}")
+
+      if isRelationshipIdColumn and noHybridProperty: continue
+
+      if doPrint:
+        print(f"    adding setter and getter for {attributeName}")
+
+      addSetterAndGetter(capsuleType = capsuleType, attributeInfo = attributeInfo)
+
+
+    #   # Only columns not hidden for internal processing (change tracking)
+    #   columns = _capsule_utils.getNonChangeTrackColumns(sqlalchemyTableType = capsuleType.sqlalchemyTableType)
+    
+    # # iterate over sqlalchemyColumnsAndColumnLikeProperties
+
+    # for column in columns:
+    #   columnName = column.name
+    #   if columnName not in ['id', 'name']:
+    #     # exclude in addition:
+    #     #    - columns on which properties are set by CapsuleBase 
+    #     #      (see module _capsule_base)
+    #     #    - columns whose name complies with relationship naming conventions
+    #     #      (see module _capsule_utils)
+    #     isBaseColumn = _capsule_utils.isBaseColumn(capsuleType = capsuleType,
+    #                                               column = column)
+    #     isRelationshipIdColumn = _capsule_utils.isRelationshipIdColumn(column)
+    #     if not (isBaseColumn or isRelationshipIdColumn):
+    #       addSetterAndGetter(capsuleType=capsuleType, attributeName=column.name)
+    #   else:
+    #     pass
+    # for key, objType in vars(capsuleType.sqlalchemyTableType).items():
+    #   if isinstance(objType, sqlalchemy_hyb.hybrid_property):
+    #     addHybridGetter(capsuleType=capsuleType, attributeName=key)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 2. Defining getter, setter properties and omit-if-none methods for relationships (for id, name,
@@ -162,9 +207,9 @@ def addDataColumnAttributes(capsuleList: typing.List[T],
 # Setter & getter properties related to the relationshipIdAttr
 # additional features if relationship_type has a (unique) id:
 def __setIdProperties(capsuleType: type[T],
-                      attributeNameDict: dict[str, str]) -> str:
-  relationshipIdAttr = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_ID]
-  relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
+                      dictAttributeNamingConventions: dict[str, str]) -> str:
+  relationshipIdAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_ID]
+  relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
   def getterFnc(self: capsuleType) -> uuid.UUID:
     fncNameSourceAndConsistency = _capsule_utils.getConsistencyCheckFncName(
                                   relationshipName = relationshipName)
@@ -177,7 +222,7 @@ def __setIdProperties(capsuleType: type[T],
       if self.sqlalchemyTable.id is not None:
         self.sqlalchemyTable.modified_at = datetime.datetime.now()
       setRelationshipAttributeValues(self = self,
-                                    attributeNameDict = attributeNameDict,
+                                    dictAttributeNamingConventions = dictAttributeNamingConventions,
                                     value = id,
                                     valueType = __RelationshipPropertyEnum.ID)
   def omitNonFnc(self: capsuleType, id: uuid.UUID):
@@ -194,13 +239,13 @@ def __setIdProperties(capsuleType: type[T],
 # Setter & getter properties related to the relationshipName_capsule_attr
 # additional features if relationship_type has a (unique) name:
 def __setNameProperties(capsuleType: type[T],
-                        attributeNameDict: dict[str, str],
+                        dictAttributeNamingConventions: dict[str, str],
                         relationshipType: type[U]) -> str:
   if not hasattr(relationshipType.sqlalchemyTableType, 'name'):
     return
-  relationshipNameCapsuleInternalAttr = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
-  relationshipNameAttr = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_NAME]
-  relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
+  relationshipNameCapsuleInternalAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
+  relationshipNameAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_NAME]
+  relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
   def getterFnc(self: T) -> str:
     fncNameSourceAndConsistency = _capsule_utils.getConsistencyCheckFncName(
                                   relationshipName = relationshipName)
@@ -212,7 +257,7 @@ def __setNameProperties(capsuleType: type[T],
       if self.sqlalchemyTable.id is not None:
         self.sqlalchemyTable.modified_at = datetime.datetime.now()
       setRelationshipAttributeValues(self = self,
-                                    attributeNameDict = attributeNameDict,
+                                    dictAttributeNamingConventions = dictAttributeNamingConventions,
                                     value = name,
                                     valueType = __RelationshipPropertyEnum.NAME_INTERNAL)
   def omitNonFnc(self: capsuleType, name: str):
@@ -230,10 +275,15 @@ def __setNameProperties(capsuleType: type[T],
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Setter & getter properties related to the object
 def __setRelationshipObjectProperties(capsuleType: type[T],
-                                      attributeNameDict: dict[str, str],
+                                      dictAttributeNamingConventions: dict[str, str],
                                       relationshipType: type[U]) -> str:
-  relationshipIdAttr = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_ID]
-  relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
+
+  doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
+  if doPrint:
+    print(f"    __setRelationshipObjectProperties {capsuleType.__name__}")
+
+  relationshipIdAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_ID]
+  relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
   def getterFnc(self) -> relationshipType:
     if not hasattr(self.sqlalchemyTable, relationshipIdAttr):
       self._raiseException(f"Illegal use of setter of property '{relationshipName}'" + \
@@ -245,7 +295,10 @@ def __setRelationshipObjectProperties(capsuleType: type[T],
     relationshipSqlaTable = getattr(self.sqlalchemyTable, relationshipName) 
     if relationshipSqlaTable is None: 
       return None
-    else:  
+    else: 
+      
+      if doPrint:
+        print(f"       calling getter function for '{relationshipName}' on {capsuleType.__name__}")
       return relationshipType.defineBySqlalchemyTable(
                   session = self.session,
                   sqlalchemyTableEntity = relationshipSqlaTable)  
@@ -259,7 +312,7 @@ def __setRelationshipObjectProperties(capsuleType: type[T],
       if self.sqlalchemyTable.id is not None:
         self.sqlalchemyTable.modified_at = datetime.datetime.now()
       setRelationshipAttributeValues(self = self,
-                                    attributeNameDict = attributeNameDict,
+                                    dictAttributeNamingConventions = dictAttributeNamingConventions,
                                     value = sqlalchemyTable,
                                     valueType = __RelationshipPropertyEnum.SQLALCHEMY_TABLE)
   def omitNonFnc(self: capsuleType, obj: relationshipType):
@@ -267,6 +320,8 @@ def __setRelationshipObjectProperties(capsuleType: type[T],
     setattr(self, relationshipName, obj)
   propertyGetter = property(_capsule_base.cleanAndCloseSession(getterFnc))
   propertySetter = propertyGetter.setter(_capsule_base.cleanAndCloseSession(setterFnc))
+  if doPrint:
+    print(f"       relationshipName: {relationshipName}")
   setattr(capsuleType, relationshipName, propertyGetter)
   setattr(capsuleType, relationshipName, propertySetter)
   omitNoneFncName = _capsule_utils.getOmitIfNoneFncName(
@@ -276,13 +331,13 @@ def __setRelationshipObjectProperties(capsuleType: type[T],
 def __addGetValidationItemsAttribute(capsuleType: type[T],
                                      callingGlobals):
   sqlalchemyTableType = capsuleType.sqlalchemyTableType
-  table = sqlalchemyTableType.__table__
   relationships = capsuleType.sqlalchemyTableType.__mapper__.relationships
   validationItemsFncName = _capsule_utils.getValidationItemsFncName()
   def getterFnc(self, callingTableType: type[V] = None) -> typing.List[type[U]]:
     result = capsuleType._referred_by_name_capsules
-    # if the calling table is the same as the called table, then no need to go through the relationships  
-    #   this avoids infinite recursion on self-referencing tables
+    # if the calling sqlalchemyTableType is the same as the called sqlalchemyTableType, 
+    #    then no need to go through the relationships  
+    #    this avoids infinite recursion on self-referencing tables
     if not callingTableType is None:
       if callingTableType.__name__ == sqlalchemyTableType.__name__:
         return result
@@ -290,7 +345,7 @@ def __addGetValidationItemsAttribute(capsuleType: type[T],
       if not relationship.key in capsuleType.sqlalchemyTableType._exclude_from_json:
         relationshipType = _capsule_utils.getRelationshipCapsuleTypeOfName(
                         relationshipName = relationship.key,
-                        table = table,
+                        sqlalchemyTableType = sqlalchemyTableType,
                         callingGlobals = callingGlobals)
         relationshipValidationItems = getattr(relationshipType, validationItemsFncName)(callingTableType = sqlalchemyTableType)
         for relationshipValidationItem in relationshipValidationItems:
@@ -306,39 +361,115 @@ def addRelationshipAttributes(capsuleList: typing.List[T],
   for capsuleType in capsuleList:
     # reset the _referred_by_name_capsules to ensure independent list
     #   for each capsuleType
+
+    doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
+    if doPrint:
+      print(f"addRelationshipAttributes {capsuleType.__name__}")
+
     capsuleType._referred_by_name_capsules = []  
     sqlalchemyTableType = capsuleType.sqlalchemyTableType
-    table = sqlalchemyTableType.__table__
-    relationshipNames: typing.List[str] = []
     __addGetValidationItemsAttribute(capsuleType=capsuleType,
                                       callingGlobals=callingGlobals)
-    for column in table.columns:
-      if _capsule_utils.isRelationshipIdColumn(column=column):
-        attributeNameDict = _capsule_utils.getDictOfRelationshipAttrName(
-                        column = column)
-        relationshipName = attributeNameDict[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
+    sqlalchemyColumnsAndColumnLikeProperties = _capsule_utils.getSqlalchemyColumnsAndColumnLikeProperties(
+                                              capsuleType = capsuleType)  
+    for attributeName, attributeInfo in sqlalchemyColumnsAndColumnLikeProperties.items():
+      if not _capsule_utils.isRelationshipIdColumnName(columnName = attributeName): continue
+      relationshipName = _capsule_utils.getColumnToRelationshipName(columnName = attributeName)
+      isHybridProperty = attributeInfo[1]
+      if doPrint:
+        print(f"  relationship id column: {attributeName} - isHybridProperty: {isHybridProperty}")
+        print(f"  relationship name     : {relationshipName}")
+      dictAttributeNamingConventions = _capsule_utils.getDictOfAttributeNamingConventionsFromRelationshipName(
+                      relationshipName = relationshipName)
+      if isHybridProperty:
+        relationshipType = getattr(sqlalchemyTableType, relationshipName).fget.__annotations__['return']
+        # Ensure that the return type is properly defined. As an example refer to:
+        #    module: EStG36a.src.model.transaction.py
+        #    class: MarketAndForwardTransaction
+        #    hybrid property: asset 
+        # Define list prefixes and check if any match
+        relationShipTypeClassName = relationshipType.__name__
+        list_prefixes = ['list', 'List', 'typing.List']
+        prefix_index = next((i for i, prefix in enumerate(list_prefixes) 
+                           if relationShipTypeClassName.startswith(prefix)), -1)
+        isList = prefix_index >= 0
+        # If it's a list type, get the actual table class name without the list prefix
+        if isList:
+            # Remove the list prefix
+            if prefix_index >= 0:
+                prefix = list_prefixes[prefix_index]
+                relationShipTypeClassName = relationShipTypeClassName[len(prefix):]
+            # Remove brackets if present
+            starts_with_bracket = relationShipTypeClassName.startswith('[')
+            ends_with_bracket = relationShipTypeClassName.endswith(']')
+            if starts_with_bracket and ends_with_bracket:
+                relationShipTypeClassName = relationShipTypeClassName[1:-1]
+        hybridPropertyCapsuleClassName = _capsule_utils.getSqlaToCapsuleName(
+                                            sqlaTableName = relationShipTypeClassName)
+        relationshipType = callingGlobals[hybridPropertyCapsuleClassName]
+      else:
         relationshipType = _capsule_utils.getRelationshipCapsuleTypeOfName(
-                        relationshipName = relationshipName,
-                        table = table,
-                        callingGlobals = callingGlobals)
+                      relationshipName = relationshipName,
+                      sqlalchemyTableType = sqlalchemyTableType,
+                      callingGlobals = callingGlobals)
         relationship = capsuleType.sqlalchemyTableType.__mapper__.relationships[relationshipName]
-        __setIdProperties(capsuleType = capsuleType,
-                          attributeNameDict = attributeNameDict)
-        __setNameProperties(capsuleType = capsuleType,
-                            attributeNameDict = attributeNameDict,
-                            relationshipType = relationshipType)
-        __setRelationshipObjectProperties(capsuleType = capsuleType,
-                            attributeNameDict = attributeNameDict,
-                            relationshipType = relationshipType)
-        if hasattr(relationshipType, 'name'):
-          # append the relationship's capsule type to _referred_by_name_capsules
-          #   used to identify permissible values for selecting by user 
-          if not relationshipType in capsuleType._referred_by_name_capsules:
-            # List have the reverse selection - so they are not included
-            #     for both display and manipulation lists
-            if not relationship.uselist:
-              #print(f"capsule type: {capsuleType.__name__}")
-              capsuleType._referred_by_name_capsules.append(relationshipType)
+        isList = relationship.uselist
+
+      if doPrint:
+        print(f"  relationship type     : {relationshipType.__name__} isList: {isList}")
+ 
+      __setIdProperties(capsuleType = capsuleType,
+                        dictAttributeNamingConventions = dictAttributeNamingConventions)
+      __setNameProperties(capsuleType = capsuleType,
+                          dictAttributeNamingConventions = dictAttributeNamingConventions,
+                          relationshipType = relationshipType)
+      __setRelationshipObjectProperties(capsuleType = capsuleType,
+                          dictAttributeNamingConventions = dictAttributeNamingConventions,
+                          relationshipType = relationshipType)
+      if hasattr(relationshipType, 'name'):
+        # append the relationship's capsule type to _referred_by_name_capsules
+        #   used to identify permissible values for selecting by user 
+        if not relationshipType in capsuleType._referred_by_name_capsules:
+          # List have the reverse selection - so they are not included
+          #     for both display and manipulation lists
+          if not isList:
+            #print(f"capsule type: {capsuleType.__name__}")
+            capsuleType._referred_by_name_capsules.append(relationshipType)
+      pass
+    # for column in sqlalchemyTableType.__table__.columns:
+    #   if _capsule_utils.isRelationshipIdColumn(column=column):
+    #     relationshipName = _capsule_utils.getRelationshipNameOfColumn(column = column)
+    #     dictAttributeNamingConventions = _capsule_utils.getDictOfAttributeNamingConventionsFromRelationshipName(
+    #                     relationshipName = relationshipName)
+    #     relationshipType = _capsule_utils.getRelationshipCapsuleTypeOfName(
+    #                     relationshipName = relationshipName,
+    #                     sqlalchemyTableType = sqlalchemyTableType,
+    #                     callingGlobals = callingGlobals)
+    #     relationship = capsuleType.sqlalchemyTableType.__mapper__.relationships[relationshipName]
+
+    #     if doPrint:
+    #       print(f"  relationship id column: {column.name}")
+    #       print(f"  relationship name     : {relationshipName}")
+    #       print(f"  relationship type     : {relationshipType.__name__}")
+    #       print(f"  relationship          : {relationship.key}")
+
+    #     __setIdProperties(capsuleType = capsuleType,
+    #                       dictAttributeNamingConventions = dictAttributeNamingConventions)
+    #     __setNameProperties(capsuleType = capsuleType,
+    #                         dictAttributeNamingConventions = dictAttributeNamingConventions,
+    #                         relationshipType = relationshipType)
+    #     __setRelationshipObjectProperties(capsuleType = capsuleType,
+    #                         dictAttributeNamingConventions = dictAttributeNamingConventions,
+    #                         relationshipType = relationshipType)
+    #     if hasattr(relationshipType, 'name'):
+    #       # append the relationship's capsule type to _referred_by_name_capsules
+    #       #   used to identify permissible values for selecting by user 
+    #       if not relationshipType in capsuleType._referred_by_name_capsules:
+    #         # List have the reverse selection - so they are not included
+    #         #     for both display and manipulation lists
+    #         if not relationship.uselist:
+    #           #print(f"capsule type: {capsuleType.__name__}")
+    #           capsuleType._referred_by_name_capsules.append(relationshipType)
 
 
         
@@ -473,7 +604,7 @@ def addListAttributes(capsuleList: typing.List[T],
       # Identify relationships that are lists (others treated above - if conventions met)
       if relationship.uselist:
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # Identify table class and capsule class of the relationship                                                   relationship = relationship)
+        # Identify capsule class of the relationship                                                   relationship = relationship)
         relationshipSqlaTableClassName = relationship.mapper.class_.__name__
         relationshipCapsuleClassName = _capsule_utils.getSqlaToCapsuleName(relationshipSqlaTableClassName)
         relationshipCapsuleClass = callingGlobals[relationshipCapsuleClassName]

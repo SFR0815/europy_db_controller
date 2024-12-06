@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing, sys
+from sqlalchemy.ext import declarative as sqlalchemy_decl
 
 
 from europy_db_controllers.entity_capsules import _capsule_utils, _capsule_base
@@ -9,7 +10,7 @@ from europy_db_controllers.entity_capsules import _capsule_utils, _capsule_base
 T = typing.TypeVar("T", bound=_capsule_base.CapsuleBase)
 
 
-def __getInitCode(table,
+def __getInitCode(sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMeta],
                   callingGlobals) -> str:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -53,12 +54,11 @@ def __getInitCode(table,
     # If the column is a relationship column, up to two further input
     #    lines are inserted:
     #    - the name attribute line of the relationship (if linked 
-    #         table has a 'name')
+    #         sqlalchemyTableType has a 'name')
     #    - the object of the relationship
     if _capsule_utils.isRelationshipIdColumn(column=column):
-      relSqlaObjectTypeName = _capsule_utils.getRelationshipTypeName(table=table, 
-                                                                     column=column, 
-                                                                     callingGlobals = callingGlobals)
+      relSqlaObjectTypeName = _capsule_utils.getRelationshipTypeName(sqlalchemyTableType=sqlalchemyTableType, 
+                                                                     column=column)
       relSqlaObjectType = callingGlobals[relSqlaObjectTypeName]
       if hasattr(relSqlaObjectType, 'name'):
         relNameColumnName = _capsule_utils.getRelationshipNameFieldOfColumn(column=column)
@@ -79,9 +79,9 @@ def __getInitCode(table,
     return output
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Definition of the full function head:
-  def getInitDef(table, 
+  def getInitDef(sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMeta], 
                  columns) -> str:
-    output = f"def {_capsule_utils.getInitFncName(table=table)}(\n" + \
+    output = f"def {_capsule_utils.getInitFncName(sqlalchemyTableType=sqlalchemyTableType)}(\n" + \
              getCommonInputLines()
     for colNo in range(0, len(columns)):
       column = columns[colNo]
@@ -98,7 +98,7 @@ def __getInitCode(table,
   #         the class' closure
   def getCommonCodeLinesAtStart() -> str:
     # See: https://stackoverflow.com/questions/71879642/how-to-pass-function-with-super-when-creating-class-dynamically
-    capsuleClassName = _capsule_utils.getCapsuleClassName(table=table)
+    capsuleClassName = _capsule_utils.getCapsuleClassName(sqlalchemyTableType=sqlalchemyTableType)
     notNewOrDirty = _capsule_utils.INIT_ENFORCE_NOT_NEW_OR_DIRTY_FLAG
     output = ""
     output = output + f"{' ' * 2}super({capsuleClassName}, self).__init__(session = session,\n"
@@ -111,9 +111,8 @@ def __getInitCode(table,
     for column in columns:
       output = output + f"{' ' * 2}self._omit_none_{column.name}({column.name})\n"    
       if _capsule_utils.isRelationshipIdColumn(column=column):
-        relSqlaObjectTypeName = _capsule_utils.getRelationshipTypeName(table=table, 
-                                                                       column=column, 
-                                                                       callingGlobals = callingGlobals)
+        relSqlaObjectTypeName = _capsule_utils.getRelationshipTypeName(sqlalchemyTableType=sqlalchemyTableType, 
+                                                                       column=column)
         relSqlaObjectType = callingGlobals[relSqlaObjectTypeName]
         if hasattr(relSqlaObjectType, 'name'):
           relationshipName = _capsule_utils.getRelationshipNameFieldOfColumn(column=column)
@@ -137,11 +136,11 @@ def __getInitCode(table,
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # identification of the column not hidden to the outside
-  nonChangeTrackColumns = _capsule_utils.getNonChangeTrackColumns(table=table,
-                                                                  callingGlobals = callingGlobals)   
+  nonChangeTrackColumns = _capsule_utils.getNonChangeTrackColumns(sqlalchemyTableType = sqlalchemyTableType)   
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # The complete function definition:
-  return getInitDef(table = table, columns = nonChangeTrackColumns) + \
+  return getInitDef(sqlalchemyTableType = sqlalchemyTableType, 
+                    columns = nonChangeTrackColumns) + \
          getCodeLines(columns = nonChangeTrackColumns)
 
 
@@ -149,18 +148,14 @@ def addInitMethods(capsuleList: typing.List[T],
                    callingGlobals):
   for capsuleType in capsuleList:
     sqlalchemyTableType = capsuleType.sqlalchemyTableType
-    table = sqlalchemyTableType.__table__
-    initCodeString = __getInitCode(table = table, 
+    initCodeString = __getInitCode(sqlalchemyTableType = sqlalchemyTableType, 
                                    callingGlobals = callingGlobals)
+    
+    if capsuleType.__name__ == "MarketAndForwardTransactionCapsule":
+      print(f"setupCode {capsuleType.__name__}: \n{initCodeString}")
+      
     exec(initCodeString , callingGlobals)
-    initMethod = callingGlobals[_capsule_utils.getInitFncName(table=table)]
+    initMethod = callingGlobals[_capsule_utils.getInitFncName(sqlalchemyTableType=sqlalchemyTableType)]
     initMethodDecorated = _capsule_base.cleanAndCloseSession(
                                       func = initMethod)
     setattr(capsuleType, "__init__", initMethodDecorated)
-    # Debug output
-    # if capsuleType.__name__ == "CoreAccountCapsule":
-    #   print("name of table: ", getattr(table, 'name'))
-    #   print("  capsuleClassName: ", capsuleType.__name__)
-    #   print("  baseClass       : ", sqlalchemyTableType.__name__)
-    #   print("__Init__ code: \n", __getInitCode(table=table,
-    #                                            callingGlobals = callingGlobals))

@@ -131,7 +131,7 @@ class ColControl():
     relName: str = relationship.key
     relDecl: sqlalchemy_decl.DeclarativeMeta = relationship.mapper.class_
     relDeclTable = relDecl.__table__
-    relCapsuleTypeName = _capsule_utils.getCapsuleClassName(table = relDeclTable)
+    relCapsuleTypeName = _capsule_utils.getCapsuleClassName(sqlalchemyTableType = relDecl)
     for capsuleType in self._capsuleList:
       capsuleTypeName = capsuleType.__name__
       if capsuleTypeName == relCapsuleTypeName:
