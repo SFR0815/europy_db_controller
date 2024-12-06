@@ -385,8 +385,30 @@ def addRelationshipAttributes(capsuleList: typing.List[T],
         relationshipType = getattr(sqlalchemyTableType, relationshipName).fget.__annotations__['return']
         # Ensure that the return type is properly defined. As an example refer to:
         #    module: EStG36a.src.model.transaction.py
-        #    class: MarketAndForwardTransaction
-        #    hybrid property: asset 
+        #    class: MarketAndForwardTransaction 
+        #    (code below has been changed - example only)
+        # @sqlalchemy_hyb.hybrid_property 
+        # def asset(self) -> "asset.AssetTable":
+        #     RETURN_TYPE_PROPERTY_NAME = "_hyb_prop_asset_return_type"
+        #     def specify_return_type(class_type_definition):
+        #       print(f"[specify_return_type running]")
+        #       if not hasattr(class_type_definition, RETURN_TYPE_PROPERTY_NAME):
+        #           print(f"  setting {RETURN_TYPE_PROPERTY_NAME}")
+        #           mkt_tx_table_class = class_type_definition.market_transaction.property.mapper.class_
+        #           setattr(class_type_definition, RETURN_TYPE_PROPERTY_NAME, mkt_tx_table_class.asset.property.mapper.class_)
+        #           class_type_definition.asset.fget.__annotations__['return'] = getattr(class_type_definition, RETURN_TYPE_PROPERTY_NAME)
+        #     if isinstance(self, MarketAndForwardTransactionTable):
+        #         specify_return_type(self.__class__)
+        #         if self.market_transaction is not None:
+        #             return self.market_transaction.asset
+        #         else:
+        #             return None
+        #     else:
+        #         specify_return_type(self)
+        #         pass
+        # @asset.setter
+        # def asset(self, value):
+        #     self.market_transaction.asset = value
         # Define list prefixes and check if any match
         relationShipTypeClassName = relationshipType.__name__
         list_prefixes = ['list', 'List', 'typing.List']
