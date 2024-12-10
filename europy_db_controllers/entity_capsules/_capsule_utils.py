@@ -498,8 +498,8 @@ def getSqlalchemyColumnsAndColumnLikeProperties(capsuleType: T
     #       -> dict{<nameOfItem>: [<nameOfItem>, <isHybridProperty>, <hasSetter]}
 
     doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
-    if doPrint:
-      print(f"\n           getSqlalchemyColumnsAndColumnLikeProperties {capsuleType.__name__}")
+    # if doPrint:
+    #   print(f"\n           getSqlalchemyColumnsAndColumnLikeProperties {capsuleType.__name__}")
 
     result = {}
     relationshipLikeHybridPropertiesToRemove = []
@@ -509,14 +509,14 @@ def getSqlalchemyColumnsAndColumnLikeProperties(capsuleType: T
         column = sqlalchemyTableType.__table__.columns[columnName]
         if isBaseColumn(capsuleType = capsuleType,
                         column = column): continue # skips 'id' and 'name' columns
-        if doPrint:
-          print(f"              adding to result column: {columnName}")
+        # if doPrint:
+        #   print(f"              adding to result column: {columnName}")
         isHybridProperty = False # columns are not hybrid properties
         hasSetter = True # all non-id, non-name columns have setters
         result[columnName] = [columnName, isHybridProperty, hasSetter]
     for itemName, objType in vars(sqlalchemyTableType).items():
-        if doPrint:
-          print(f"              checking for hybrid property: {itemName} of type {type(objType)}")
+        # if doPrint:
+        #   print(f"              checking for hybrid property: {itemName} of type {type(objType)}")
         if not isinstance(objType, sqlalchemy_hyb.hybrid_property): continue # if not hybrid property do nothing
         hybridPropertyName = itemName
         if hybridPropertyName in result: continue # skip if hybrid property is an override
@@ -524,8 +524,8 @@ def getSqlalchemyColumnsAndColumnLikeProperties(capsuleType: T
             # the relationship like hybrid properties must be taken out before return
             relationShipName = getColumnToRelationshipName(columnName = hybridPropertyName)
             relationshipLikeHybridPropertiesToRemove.append(relationShipName)            
-        if doPrint:
-          print(f"              adding to result hybrid property: {hybridPropertyName}")
+        # if doPrint:
+        #   print(f"              adding to result hybrid property: {hybridPropertyName}")
         isHybridProperty = True # all hybrid properties are hybrid, of course
         hasSetter = hasattr(objType, 'fset') and objType.fset is not None
         result[hybridPropertyName] = [hybridPropertyName, isHybridProperty, hasSetter]
@@ -811,6 +811,8 @@ def getRelationshipTypeNameOfName(relationshipName: str,
     Returns:
         str: Relationship type name
     """
+    # for relationship in sqlalchemyTableType.__mapper__.relationships:
+    #     print(f"relationship.key: {relationship.key}")
     relationship = getRelationshipOfName(relationshipName = relationshipName,
                                          sqlalchemyTableType = sqlalchemyTableType)
     if relationship is None:

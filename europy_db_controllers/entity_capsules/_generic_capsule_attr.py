@@ -100,9 +100,9 @@ def addDataColumnAttributes(capsuleList: typing.List[T],
   def addSetterAndGetter(capsuleType: type[T], 
                          attributeInfo: typing.List[typing.Union[str, bool]]):
 
-    doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
-    if doPrint:
-      print(f"addDataColumnAttributes {capsuleType.__name__}")
+    # doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
+    # if doPrint:
+    #   print(f"addDataColumnAttributes {capsuleType.__name__}")
 
   
     attributeName = attributeInfo[0]
@@ -127,15 +127,15 @@ def addDataColumnAttributes(capsuleList: typing.List[T],
       setattr(self, attributeName, value)
     # add getter
 
-    if doPrint:
-      print(f"    implementing getterFnc: {attributeName}")
+    # if doPrint:
+    #   print(f"    implementing getterFnc: {attributeName}")
 
     propertyGetter = property(_capsule_base.cleanAndCloseSession(getterFnc))
     setattr(capsuleType, attributeName, propertyGetter)
     # add setter and omitNone if and only if <hasSetter> is True
 
-    if doPrint:
-      print(f"    implementing setterFnc: {attributeName}")
+    # if doPrint:
+    #   print(f"    implementing setterFnc: {attributeName}")
 
     if hasSetter:
       propertySetter = propertyGetter.setter(_capsule_base.cleanAndCloseSession(setterFnc))
@@ -151,9 +151,9 @@ def addDataColumnAttributes(capsuleList: typing.List[T],
     setattr(capsuleType, attributeName, propertyGetter)
   for capsuleType in capsuleList:
 
-    doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
-    if doPrint:
-      print(f"addDataColumnAttributes {capsuleType.__name__}")
+    # doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
+    # if doPrint:
+    #   print(f"addDataColumnAttributes {capsuleType.__name__}")
 
     # getSqlalchemyColumnsAndColumnLikeProperties(capsuleType = capsuleType) 
     #       -> dict{<nameOfItem>: [<nameOfItem>, <isHybridProperty>, <hasSetter]}
@@ -163,14 +163,14 @@ def addDataColumnAttributes(capsuleList: typing.List[T],
       noHybridProperty = not attributeInfo[1]
       isRelationshipIdColumn = _capsule_utils.isRelationshipIdColumnName(columnName = attributeName)
 
-      if doPrint:
-        print(f"\n    attributeInfo: {attributeName} {attributeInfo} isRelationshipIdColumn: {isRelationshipIdColumn} noHybridProperty: {noHybridProperty}")
-        print(f"      continue? {isRelationshipIdColumn or noHybridProperty}")
+      # if doPrint:
+      #   print(f"\n    attributeInfo: {attributeName} {attributeInfo} isRelationshipIdColumn: {isRelationshipIdColumn} noHybridProperty: {noHybridProperty}")
+      #   print(f"      continue? {isRelationshipIdColumn or noHybridProperty}")
 
       if isRelationshipIdColumn and noHybridProperty: continue
 
-      if doPrint:
-        print(f"    adding setter and getter for {attributeName}")
+      # if doPrint:
+      #   print(f"    adding setter and getter for {attributeName}")
 
       addSetterAndGetter(capsuleType = capsuleType, attributeInfo = attributeInfo)
 
@@ -278,9 +278,9 @@ def __setRelationshipObjectProperties(capsuleType: type[T],
                                       dictAttributeNamingConventions: dict[str, str],
                                       relationshipType: type[U]) -> str:
 
-  doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
-  if doPrint:
-    print(f"    __setRelationshipObjectProperties {capsuleType.__name__}")
+  # doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
+  # if doPrint:
+  #   print(f"    __setRelationshipObjectProperties {capsuleType.__name__}")
 
   relationshipIdAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_ID]
   relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
@@ -297,8 +297,8 @@ def __setRelationshipObjectProperties(capsuleType: type[T],
       return None
     else: 
       
-      if doPrint:
-        print(f"       calling getter function for '{relationshipName}' on {capsuleType.__name__}")
+      # if doPrint:
+      #   print(f"       calling getter function for '{relationshipName}' on {capsuleType.__name__}")
       return relationshipType.defineBySqlalchemyTable(
                   session = self.session,
                   sqlalchemyTableEntity = relationshipSqlaTable)  
@@ -320,8 +320,8 @@ def __setRelationshipObjectProperties(capsuleType: type[T],
     setattr(self, relationshipName, obj)
   propertyGetter = property(_capsule_base.cleanAndCloseSession(getterFnc))
   propertySetter = propertyGetter.setter(_capsule_base.cleanAndCloseSession(setterFnc))
-  if doPrint:
-    print(f"       relationshipName: {relationshipName}")
+  # if doPrint:
+  #   print(f"       relationshipName: {relationshipName}")
   setattr(capsuleType, relationshipName, propertyGetter)
   setattr(capsuleType, relationshipName, propertySetter)
   omitNoneFncName = _capsule_utils.getOmitIfNoneFncName(
@@ -376,9 +376,9 @@ def addRelationshipAttributes(capsuleList: typing.List[T],
       if not _capsule_utils.isRelationshipIdColumnName(columnName = attributeName): continue
       relationshipName = _capsule_utils.getColumnToRelationshipName(columnName = attributeName)
       isHybridProperty = attributeInfo[1]
-      if doPrint:
-        print(f"  relationship id column: {attributeName} - isHybridProperty: {isHybridProperty}")
-        print(f"  relationship name     : {relationshipName}")
+      # if doPrint:
+      #   print(f"  relationship id column: {attributeName} - isHybridProperty: {isHybridProperty}")
+      #   print(f"  relationship name     : {relationshipName}")
       dictAttributeNamingConventions = _capsule_utils.getDictOfAttributeNamingConventionsFromRelationshipName(
                       relationshipName = relationshipName)
       if isHybridProperty:
@@ -437,8 +437,8 @@ def addRelationshipAttributes(capsuleList: typing.List[T],
         relationship = capsuleType.sqlalchemyTableType.__mapper__.relationships[relationshipName]
         isList = relationship.uselist
 
-      if doPrint:
-        print(f"  relationship type     : {relationshipType.__name__} isList: {isList}")
+      # if doPrint:
+      #   print(f"  relationship type     : {relationshipType.__name__} isList: {isList}")
  
       __setIdProperties(capsuleType = capsuleType,
                         dictAttributeNamingConventions = dictAttributeNamingConventions)

@@ -126,8 +126,8 @@ def __addSetupMethod(controllerType: type[T],
   setupCode = __getObjectSetupCode(capsuleType = capsuleType,
                                    setupFncName = setupFncName,
                                    callingGlobals = callingGlobals)
-  # if capsuleType.__name__ == "MarketAndForwardTransactionCapsule":
-  #   print(f"setupCode {capsuleType.__name__}: \n{setupCode}")
+  if capsuleType.__name__ == "MarketTransactionCapsule":
+    print(f"setupCode {capsuleType.__name__}: \n{setupCode}")
   exec(setupCode, callingGlobals)
   setupMethod = callingGlobals[setupFncName]
   setupMethodDecorated = _controller_base.cleanAndCloseSession(func = setupMethod)  

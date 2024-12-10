@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import typing, sys
+import typing, sys, os
 from sqlalchemy.ext import declarative as sqlalchemy_decl
 
 
@@ -151,6 +151,12 @@ def addInitMethods(capsuleList: typing.List[T],
     initCodeString = __getInitCode(sqlalchemyTableType = sqlalchemyTableType, 
                                    callingGlobals = callingGlobals)
     
+    # this_file_path = os.path.dirname(__file__)
+    # folder_path = 'init_codes'
+    # full_file_path = os.path.join(this_file_path, folder_path)
+    # file_name = full_file_path + '/' + capsuleType.__name__ + '.txt'
+    # with open(file_name, 'w') as file:
+    #   file.write(initCodeString)
     if capsuleType.__name__ == "MarketAndForwardTransactionCapsule":
       print(f"setupCode {capsuleType.__name__}: \n{initCodeString}")
       

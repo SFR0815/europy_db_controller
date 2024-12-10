@@ -195,8 +195,14 @@ class CapsuleBase():
       if not self.isInSession:
         self.session.add(self.sqlalchemyTable)
   def deleteFromDb(self):
-    if self.sqlalchemyTable in self.session:
-      self.session.delete(self.sqlalchemyTable)
+    if self.sqlalchemyTable in self.session: 
+      ready_for_delete = True
+      if hasattr(self.sqlalchemyTable, 'readyForDelete'):
+        ready_for_delete, msg = self.sqlalchemyTable.readyForDelete
+      if ready_for_delete:
+        self.session.delete(self.sqlalchemyTable)
+      else: 
+        raise ValueError(msg)
   def refresh(self):
     # refresh the data of the object
     self.session.refresh(self.sqlalchemyTable)
