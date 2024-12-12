@@ -14,6 +14,7 @@ CT = typing.TypeVar("CT", bound=_capsule_base.CapsuleBase)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 INPUTS_LINE_PREFIX = " " * 20
 
+DEBUG_CAPSULE_TYPE = "MarketTransactionCapsule"
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Function providing a input parameter line (general)
 def getBasicInputLine(varName: str, 
@@ -41,12 +42,16 @@ def isColumnAttributeNameToAdd(columnAttributeName: str,
 def __getObjectSetupCode(capsuleType: type[CT],
                          setupFncName: str,
                          callingGlobals) -> str:
-  sqlalchemyTableType = capsuleType.sqlalchemyTableType
-  tableAttrNameDict = _capsule_utils.getDictOfColumnAttributeNamesOfTable(sqlalchemyTableType=sqlalchemyTableType)
-  # for columnKey, columnAttrNameDict in tableAttrNameDict.items():
-  #   print(f"columnKey: {columnKey}")
-  #   for attrKey, attrName in columnAttrNameDict.items():
-  #     print(f"   attrKey: {attrKey:<40} - attrKey: {attrName}")
+  # if capsuleType.__name__ == DEBUG_CAPSULE_TYPE:
+  #   print(f"sqlalchemyTableType: {capsuleType.sqlalchemyTableType.__name__}")
+  #   columns = capsuleType.sqlalchemyTableType.__table__.columns 
+  #   for column in columns:
+  #     print(f"        column: {column.name}")
+  tableAttrNameDict = _capsule_utils.getDictOfColumnAndAlikeAttributeNamesOfCapsule(capsuleType=capsuleType)
+  # if capsuleType.__name__ == DEBUG_CAPSULE_TYPE:
+  #   for key, columnOrAlikeInfo in tableAttrNameDict.items():
+  #     print(f"key: {key}")
+  #     print(f"          columnOrAlikeInfo: {columnOrAlikeInfo}")
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Def head and input parameter definition
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,9 +61,9 @@ def __getObjectSetupCode(capsuleType: type[CT],
     return output 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Input parameter line(s) of a specific column
-  def getCustomInputLine(column) -> str:
-    # pythonType = _capsule_utils.getPythonType(type(column.type)) FIXME: see below
-    columnAttrNameDict = tableAttrNameDict[column.name]
+  def getCustomInputLine(columnOrAlikeInfo: typing.Tuple[str, bool, bool]) -> str:
+    columnOrAlikeName = columnOrAlikeInfo[0]
+    columnAttrNameDict = tableAttrNameDict[columnOrAlikeName]
     output = ""
     for key, columnAttributeName in columnAttrNameDict.items():
       if isColumnAttributeNameToAdd(columnAttributeName = columnAttributeName, key = key): 
@@ -74,27 +79,29 @@ def __getObjectSetupCode(capsuleType: type[CT],
     return output
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Definition of the full function head:
-  def getFncHead(columns) -> str:
+  def getFncHead(columnsAndAlikeInfo: typing.Dict[str, typing.Tuple[str, bool, bool]]) -> str:
     output = f"def {setupFncName}(\n" + \
              getCommonInputLines()
-    for colNo in range(0, len(columns)):
-      column = columns[colNo]
+    inputItemNames = list(columnsAndAlikeInfo.keys())
+    for inputItemNumber in range(0, len(inputItemNames)):
+      inputItemName = inputItemNames[inputItemNumber]
+      columnOrAlikeInfo = columnsAndAlikeInfo[inputItemName]
       # print("   column: ", column.name)
-      isEnd = (colNo == len(columns) - 1)
-      output = output + getCustomInputLine(column = column)
+      isEnd = (inputItemNumber == len(columnsAndAlikeInfo) - 1)
+      output = output + getCustomInputLine(columnOrAlikeInfo = columnOrAlikeInfo)
     output = output + getConditionsInputLines()
     return output 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # The content of the setup function:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # 
-  def getCrateCapsuleCode(columns) -> str:
+  def getCrateCapsuleCode(columnsAndAlikeInfo: typing.Dict[str, typing.Tuple[str, bool, bool]]) -> str:
     def getParameters() -> str:
       indent = INPUTS_LINE_PREFIX + " " * 4
       output = "\n"
       output = output + f"{indent}session = self.session, \n"
-      for column in columns:
-        columnAttrNameDict = tableAttrNameDict[column.name]
+      for columnOrAlikeName in columnsAndAlikeInfo.keys():
+        columnAttrNameDict = tableAttrNameDict[columnOrAlikeName]
         for key, columnAttributeName in columnAttrNameDict.items():
           if isColumnAttributeNameToAdd(columnAttributeName = columnAttributeName, key = key): 
             if hasattr(capsuleType, columnAttributeName):
@@ -108,16 +115,16 @@ def __getObjectSetupCode(capsuleType: type[CT],
     output = output + f"{' ' *2}capsule.addToSession()\n"
     output = output + f"{' ' *2}return capsule\n"
     return output
-  def getCodeLines(columns) -> str:  
-    return getCrateCapsuleCode(columns=columns) 
+  def getCodeLines(columnsAndAlikeInfo: typing.Dict[str, typing.Tuple[str, bool, bool]]) -> str:  
+    return getCrateCapsuleCode(columnsAndAlikeInfo = columnsAndAlikeInfo) 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # identification of the column not hidden to the outside
   # print("callingGlobals: ", vars(capsules).keys())
-  nonChangeTrackColumns = _capsule_utils.getNonChangeTrackColumns(sqlalchemyTableType = sqlalchemyTableType) 
+  columnsAndAlikeInfo = _capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties(capsuleType = capsuleType)
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # The complete function definition:
-  return getFncHead(columns = nonChangeTrackColumns) + \
-         getCodeLines(columns = nonChangeTrackColumns)
+  return getFncHead(columnsAndAlikeInfo = columnsAndAlikeInfo) + \
+         getCodeLines(columnsAndAlikeInfo = columnsAndAlikeInfo)
 
 def __addSetupMethod(controllerType: type[T],
                      capsuleType: type[CT],
@@ -126,7 +133,7 @@ def __addSetupMethod(controllerType: type[T],
   setupCode = __getObjectSetupCode(capsuleType = capsuleType,
                                    setupFncName = setupFncName,
                                    callingGlobals = callingGlobals)
-  if capsuleType.__name__ == "MarketTransactionCapsule":
+  if capsuleType.__name__ == DEBUG_CAPSULE_TYPE:
     print(f"setupCode {capsuleType.__name__}: \n{setupCode}")
   exec(setupCode, callingGlobals)
   setupMethod = callingGlobals[setupFncName]

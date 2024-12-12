@@ -109,6 +109,11 @@ def getNonChangeTrackColumnNames(
     columnList = getNonChangeTrackColumns(sqlalchemyTableType = sqlalchemyTableType)
     return [column.name for column in columnList] 
 # Test if sqlalchemy column is a base column (see _capsule_base '_base_columns')
+def isBaseColumnName(capsuleType: _capsule_base.CapsuleBase, 
+                     columnName: str) -> bool:
+    baseColumnNames = capsuleType._base_columns
+    return columnName in baseColumnNames
+
 def isBaseColumn(capsuleType: _capsule_base.CapsuleBase, 
                  column) -> bool:
     """
@@ -121,8 +126,8 @@ def isBaseColumn(capsuleType: _capsule_base.CapsuleBase,
     Returns:
         bool: True if column is a base column, False otherwise
     """
-    baseColumnNames = capsuleType._base_columns
-    return column.name in baseColumnNames
+    return isBaseColumnName(capsuleType = capsuleType,
+                           columnName = column.name)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -485,7 +490,7 @@ def getHybridPropertyNames(sqlalchemyTableType: typing.Type[sqlalchemy_decl.Decl
             result.append(key)
     return result
 def getSqlalchemyColumnsAndColumnLikeProperties(capsuleType: T
-                                                ) -> typing.Dict[str, typing.List[str, bool, bool]]:
+                                                ) -> typing.Dict[str, typing.Tuple[str, bool, bool]]:
     """
     Returns a dictionary of SQLAlchemy columns and column-like properties.
     
@@ -507,8 +512,6 @@ def getSqlalchemyColumnsAndColumnLikeProperties(capsuleType: T
     columnNamesList = getNonChangeTrackColumnNames(sqlalchemyTableType=sqlalchemyTableType)
     for columnName in columnNamesList:
         column = sqlalchemyTableType.__table__.columns[columnName]
-        if isBaseColumn(capsuleType = capsuleType,
-                        column = column): continue # skips 'id' and 'name' columns
         # if doPrint:
         #   print(f"              adding to result column: {columnName}")
         isHybridProperty = False # columns are not hybrid properties
@@ -528,12 +531,38 @@ def getSqlalchemyColumnsAndColumnLikeProperties(capsuleType: T
         #   print(f"              adding to result hybrid property: {hybridPropertyName}")
         isHybridProperty = True # all hybrid properties are hybrid, of course
         hasSetter = hasattr(objType, 'fset') and objType.fset is not None
-        result[hybridPropertyName] = [hybridPropertyName, isHybridProperty, hasSetter]
+        result[hybridPropertyName] = (hybridPropertyName, isHybridProperty, hasSetter)
     # remove the relationship like hybrid properties
-    # for relationShipLikeHybridProperty in relationshipLikeHybridPropertiesToRemove:
-    #     del result[relationShipLikeHybridProperty]
+    for relationShipLikeHybridProperty in relationshipLikeHybridPropertiesToRemove:
+        del result[relationShipLikeHybridProperty]
     return result
-
+def getCapsuleInitColumnsAndColumnLikeProperties(capsuleType: T
+                                                 ) -> typing.Dict[str, typing.Tuple[str, bool, bool]]:
+    result = getSqlalchemyColumnsAndColumnLikeProperties(capsuleType = capsuleType)
+    replacementInstructions = capsuleType.sqlalchemyTableType._hyb_props_replacing_columns 
+    requiredHybridProperties = list(replacementInstructions.keys())
+    resultKeys = list(result.keys())
+    # No hybrid properties in init parameters if they do not replace a column
+    for resultKey in resultKeys:
+        columnOrAlikeInfo = result[resultKey]
+        keyIsReplacingHybridProperty = resultKey in requiredHybridProperties
+        if columnOrAlikeInfo[1] and not keyIsReplacingHybridProperty:
+            del result[resultKey]
+    # Remove the replaced columns from the result dict
+    for hybridPropertyName, replacedColumnName in replacementInstructions.items():
+        if not hybridPropertyName in result: 
+            raise ValueError(f"Error replacing table column for hybrid Property in Capsule init parameters." + \
+                             f"    Hybrid property missing in list of preliminary init parameters." + \
+                             f"    CapsuleType       : {capsuleType.__name__} not in result" + \
+                             f"    hybridPropertyName: {hybridPropertyName} not in result")
+        if not replacedColumnName in result: 
+            raise ValueError(f"Error replacing table column for hybrid Property in Capsule init parameters." + \
+                             f"    Column to be replaced missing in list of preliminary init parameters." + \
+                             f"    CapsuleType       : {capsuleType.__name__} not in result" + \
+                             f"    replacedColumnName: {replacedColumnName} not in result")
+        # Remove the replaced column from the result dict
+        del result[replacedColumnName]
+    return result
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Naming conventions of columns defining relationships by foreign keys:
@@ -574,6 +603,10 @@ def isRelationshipIdColumn(column: sqlalchemy.Column) -> bool:
         bool: True if column is a relationship ID column, False otherwise
     """
     return isRelationshipIdColumnName(columnName=column.name)
+
+def getRelationshipIdFieldOfColumnName(columnName: str):
+    if isRelationshipIdColumnName(columnName=columnName): return columnName
+    return None
 def getRelationshipIdFieldOfColumn(column: sqlalchemy.Column):
     """
     Returns the relationship ID field of a column.
@@ -584,9 +617,9 @@ def getRelationshipIdFieldOfColumn(column: sqlalchemy.Column):
     Returns:
         str: Relationship ID field name or None
     """
-    if isRelationshipIdColumn(column=column):
-        return column.name if isRelationshipIdColumn(column=column) \
-                       else None
+    columnName = column.name    
+    return getRelationshipIdFieldOfColumnName(columnName=columnName)
+
   # more precise testing might be added later
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # The name of the sqlalchemyTable of the foreign key -> <name of sqlalchemyTable of foreign key>
@@ -732,32 +765,24 @@ def getDictOfAttributeNamingConventionsFromRelationshipName(relationshipName: st
     return result
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Get the dictionary of id, name, internal name and relationship attributes based on 
-#    columnName
-def getDictOfColumnAttributeNamesOfTable(sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMeta]) -> dict:
-    """
-    Returns a dictionary of column attribute names for a SQLAlchemy Declarative type.
-    
-    Args:
-        sqlalchemyTableType: SQLAlchemy Declarative Meta class
-        
-    Returns:
-        dict: Dictionary of column attribute names
-    """
+#    columnName or name of column substitute
+def getDictOfColumnAndAlikeAttributeNamesOfCapsule(capsuleType: typing.Type[T]) -> dict:
     result = {}
-    for column in sqlalchemyTableType.__table__.columns:
+    columnsAndAlikeInfo = getSqlalchemyColumnsAndColumnLikeProperties(capsuleType = capsuleType)
+    for columnOrAlikeName, columnOrAlikeInfo in columnsAndAlikeInfo.items():
         columnDict = {}
-        columnDict[COL_NAME_DICT_KEY] = column.name
-        columnDict[REL_ATTR_DICT_KEY_ID] = getRelationshipIdFieldOfColumn(
-                                            column = column)
-        columnDict[REL_ATTR_DICT_KEY_NAME] = getRelationshipNameFieldOfColumn(
-                                            column = column)
-        columnDict[REL_ATTR_DICT_KEY_INTERNAL_NAME] = getRelationshipNameInternaFieldOfColumn(
-                                            column = column)
-        columnDict[REL_ATTR_DICT_KEY_RELATIONSHIP] = getRelationshipNameOfColumn(
-                                            column = column)
-        result[column.name] = columnDict
+        columnDict[COL_NAME_DICT_KEY] = columnOrAlikeName
+        columnDict[REL_ATTR_DICT_KEY_ID] = getRelationshipIdFieldOfColumnName(
+                                            columnName = columnOrAlikeName)
+        columnDict[REL_ATTR_DICT_KEY_NAME] = getColumnRelationshipNameField(
+                                            columnName = columnOrAlikeName)
+        columnDict[REL_ATTR_DICT_KEY_INTERNAL_NAME] = getColumnRelationshipInternalNameField(
+                                            columnName = columnOrAlikeName)
+        columnDict[REL_ATTR_DICT_KEY_RELATIONSHIP] = getColumnToRelationshipName(
+                                            columnName = columnOrAlikeName)
+        result[columnOrAlikeName] = columnDict
     return result
-
+    pass
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Identification of the relationship defined on the basis of the '_id' column
@@ -818,6 +843,21 @@ def getRelationshipTypeNameOfName(relationshipName: str,
     if relationship is None:
         raise Exception(f"Could not identify relationship named '{relationshipName}' on {sqlalchemyTableType.__table__.name}.")
     return relationship.mapper.class_.__name__
+def getRelationshipTypeNameOfColumnName(columnName: str, 
+                                        sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMeta]):
+    """
+    Returns the relationship type name for a given column name.
+    
+    Args:
+        column: SQLAlchemy column object
+        
+    Returns:
+        str: Relationship type name or None
+    """
+    relName = getColumnToRelationshipName(columnName=columnName)
+    if relName is None: return None
+    return getRelationshipTypeNameOfName(relationshipName = relName,
+                                         sqlalchemyTableType = sqlalchemyTableType)
 def getRelationshipTypeName(sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMeta], 
                             column: sqlalchemy.Column):
     """
@@ -830,10 +870,8 @@ def getRelationshipTypeName(sqlalchemyTableType: typing.Type[sqlalchemy_decl.Dec
     Returns:
         str: Relationship type name or None
     """
-    relName = getRelationshipNameOfColumn(column=column)
-    if relName is None: return None
-    return getRelationshipTypeNameOfName(relationshipName = relName,
-                                         sqlalchemyTableType = sqlalchemyTableType)
+    return getRelationshipTypeNameOfColumnName(columnName = column.name,
+                                              sqlalchemyTableType = sqlalchemyTableType)
 def getRelationshipSqlalchemyTypeOfName(relationshipName: str, 
                               sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMeta], 
                               callingGlobals) -> sqlalchemy.Relationship:  
@@ -871,7 +909,40 @@ def getRelationshipCapsuleTypeOfName(relationshipName: str,
                                         sqlalchemyTableType = sqlalchemyTableType)
     relationshipCapsuleTypeName = getSqlaToCapsuleName(sqlaTableName = relationshipTypeName)
     return callingGlobals[relationshipCapsuleTypeName]
-
+def getRelationshipCapsuleTypeSpecOfIdColumnName(idColumnName: str,
+                                                 isHybridProperty: bool,
+                                                 capsuleType: typing.Type[T],
+                                                 callingGlobals) -> typing.Tuple[str, typing.Type[T], bool]:
+    if not isRelationshipIdColumnName(columnName = idColumnName):
+        raise Exception(f"[_capsule_utils.getRelationshipCapsuleTypeSpecOfIdColumnName] " + \
+                        f"Column name '{idColumnName}' is not an id column of a relationship.")
+    relationshipName = getColumnToRelationshipName(columnName = idColumnName)
+    if isHybridProperty:
+        relationshipType = getattr(capsuleType.sqlalchemyTableType, relationshipName).fget.__annotations__['return']
+        relationShipTypeClassName = relationshipType.__name__
+        list_prefixes = ['list', 'List', 'typing.List']
+        prefix_index = next((i for i, prefix in enumerate(list_prefixes) 
+                           if relationShipTypeClassName.startswith(prefix)), -1)
+        isList = prefix_index >= 0
+        if isList:
+            if prefix_index >= 0:
+                prefix = list_prefixes[prefix_index]
+                relationShipTypeClassName = relationShipTypeClassName[len(prefix):]
+            starts_with_bracket = relationShipTypeClassName.startswith('[')
+            ends_with_bracket = relationShipTypeClassName.endswith(']')
+            if starts_with_bracket and ends_with_bracket:
+                relationShipTypeClassName = relationShipTypeClassName[1:-1]
+        hybridPropertyCapsuleClassName = getSqlaToCapsuleName(
+                                            sqlaTableName = relationShipTypeClassName)
+        relationshipType = callingGlobals[hybridPropertyCapsuleClassName]
+    else:
+        relationshipType = getRelationshipCapsuleTypeOfName(
+                    relationshipName = relationshipName,
+                    sqlalchemyTableType = capsuleType.sqlalchemyTableType,
+                    callingGlobals = callingGlobals)
+        relationship = capsuleType.sqlalchemyTableType.__mapper__.relationships[relationshipName]
+        isList = relationship.uselist
+    return (relationshipName, relationshipType, isList)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Identification of the relationship properties
 def isDisplayList(sqlalchemyTableType,

@@ -25,6 +25,19 @@ def cleanAndCloseSession(func):
     return result
   return wrapper 
 
+def getSetHybridPropertyOnSqlalchemyTableFncName(hybridPropertyName: str) -> str:
+    """
+    Returns the function name for setting a hybrid property on a SQLAlchemy table.
+    
+    Args:
+        relationshipName: Relationship name
+        
+    Returns:
+        str: Set hybrid property function name
+    """
+    return f"_set_{hybridPropertyName}_on_sqlalchemyTable"
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # basic capsule
@@ -44,6 +57,12 @@ class CapsuleBase():
   _referred_by_name_capsules = []  
 
   sqlalchemyTableType: any
+  def _setAttributeOnSqlalchemyTable(self, attributeName: str, value: any):
+    setHybridPropertyOnSqlalchemyTableFncName = getSetHybridPropertyOnSqlalchemyTableFncName(attributeName)
+    if hasattr(self, setHybridPropertyOnSqlalchemyTableFncName):
+      getattr(self, setHybridPropertyOnSqlalchemyTableFncName)(value)
+    else:
+      setattr(self.sqlalchemyTable, attributeName, value)
 
   def _raiseException(self, errMsg: str): 
     self.session.expunge_all()

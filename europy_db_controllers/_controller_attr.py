@@ -38,9 +38,13 @@ def __addCapsuleAttributes(controllerType: type[T],
                                   key = lambda x: getattr(x, sortedBy), 
                                   reverse=False)
       elif not capsuleType.sqlalchemyTableType._sorted_by is None: # standard sorting
-        sqlalchemyTables = sorted(sqlalchemyTables, 
-                                  key = operator.attrgetter(*capsuleType.sqlalchemyTableType._sorted_by), 
-                                  reverse=False)
+        try:        
+          sqlalchemyTables = sorted(sqlalchemyTables, 
+                                    key = operator.attrgetter(*capsuleType.sqlalchemyTableType._sorted_by), 
+                                    reverse=False)
+        except Exception as e:
+          print(f"[_controller_attr.__addCapsuleAttributes] {capsuleType.__name__}: sorted_by: {capsuleType.sqlalchemyTableType._sorted_by}")
+          raise e
     for sqlalchemyTable in sqlalchemyTables:
       yield capsuleType.defineBySqlalchemyTable(
                 session = self.session,

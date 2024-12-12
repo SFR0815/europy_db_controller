@@ -9,8 +9,10 @@ from europy_db_controllers.entity_capsules import _capsule_utils, _capsule_base
 
 T = typing.TypeVar("T", bound=_capsule_base.CapsuleBase)
 
+DEBUG_CAPSULE_TYPE = "MarketTransactionCapsule"
 
-def __getInitCode(sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMeta],
+
+def __getInitCode(capsuleType: type[T],
                   callingGlobals) -> str:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -38,40 +40,48 @@ def __getInitCode(sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMe
     return output 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Input parameter line(s) of a specific column
-  def getCustomInputLine(column, isEnd: bool = False) -> str:
-    pythonType = _capsule_utils.getPythonType(type(column.type))
+  def getCustomInputLine(columnOrAlikeInfo: typing.Tuple[str, bool, bool],  
+                         isEnd: bool = False) -> str:
+    # FIXME: pythonType = _capsule_utils.getPythonType(type(column.type))
     # If it is the last column, the closure of the function head 
     #    must be after the last input line of the parameters 
     #    associated with the column:
-    cntrIsEnd: bool = isEnd
-    if _capsule_utils.isRelationshipIdColumn(column=column):
-      cntrIsEnd = False
+    itemName = columnOrAlikeInfo[0]
+    isHybridProperty = columnOrAlikeInfo[1]
+    isAtEnd: bool = isEnd
+    if _capsule_utils.isRelationshipIdColumnName(columnName=itemName):
+      isAtEnd = False
     # The input line associated with the value of the column itself
-    output = getBasicInputLine(varName=column.name,
-                              typeName=pythonType,
+    output = getBasicInputLine(varName=itemName,
+                              # FIXME: typeName=pythonType,
                               default="None",
-                              isEnd=cntrIsEnd)
+                              isEnd=False)
     # If the column is a relationship column, up to two further input
     #    lines are inserted:
     #    - the name attribute line of the relationship (if linked 
     #         sqlalchemyTableType has a 'name')
     #    - the object of the relationship
-    if _capsule_utils.isRelationshipIdColumn(column=column):
-      relSqlaObjectTypeName = _capsule_utils.getRelationshipTypeName(sqlalchemyTableType=sqlalchemyTableType, 
-                                                                     column=column)
+    if _capsule_utils.isRelationshipIdColumnName(columnName=itemName):
+      if isHybridProperty:
+        relationshipName = _capsule_utils.getColumnToRelationshipName(columnName=itemName)
+        relSqlaObjectTypeName = getattr(capsuleType.sqlalchemyTableType, relationshipName).fget.__annotations__['return']
+        relSqlaObjectTypeName = relSqlaObjectTypeName.__name__
+      else:
+        relSqlaObjectTypeName = _capsule_utils.getRelationshipTypeNameOfColumnName(sqlalchemyTableType=capsuleType.sqlalchemyTableType, 
+                                                                     columnName=itemName)
       relSqlaObjectType = callingGlobals[relSqlaObjectTypeName]
       if hasattr(relSqlaObjectType, 'name'):
-        relNameColumnName = _capsule_utils.getRelationshipNameFieldOfColumn(column=column)
+        relNameColumnName = _capsule_utils.getColumnRelationshipNameField(columnName=itemName)
         output = output + getBasicInputLine(varName=relNameColumnName,
                                 typeName="str",
                                 default="None",
-                                isEnd=cntrIsEnd)
-      relColumnName = _capsule_utils.getRelationshipNameOfColumn(column=column)
+                                isEnd=False)
+      relColumnName = _capsule_utils.getColumnToRelationshipName(columnName=itemName)
       relCapsuleObjectType = _capsule_utils.getSqlaToCapsuleName(relSqlaObjectTypeName)
       output = output + getBasicInputLine(varName=relColumnName,
                               typeName=relCapsuleObjectType,
                               default="None",
-                              isEnd=isEnd)
+                              isEnd=False)
     return output
   def getConditionsInputLines():
     output = ""
@@ -79,13 +89,18 @@ def __getInitCode(sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMe
     return output
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Definition of the full function head:
-  def getInitDef(sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMeta], 
-                 columns) -> str:
-    output = f"def {_capsule_utils.getInitFncName(sqlalchemyTableType=sqlalchemyTableType)}(\n" + \
+  def getInitDef(capsuleType: typing.Type[T], 
+                 columnsAndAlikeInfo: typing.Dict[str, typing.Tuple[str, bool, bool]]) -> str:
+    output = f"def {_capsule_utils.getInitFncName(sqlalchemyTableType=capsuleType.sqlalchemyTableType)}(\n" + \
              getCommonInputLines()
-    for colNo in range(0, len(columns)):
-      column = columns[colNo]
-      output = output + getCustomInputLine(column = column)
+    inputItemNames = list(columnsAndAlikeInfo.keys())
+    for inputItemNumber in range(0, len(inputItemNames)):
+      inputItemName = inputItemNames[inputItemNumber]
+      columnOrAlikeInfo = columnsAndAlikeInfo[inputItemName]
+      # print("   column: ", column.name)
+      isEnd = (inputItemNumber == len(columnsAndAlikeInfo) - 1)
+      output = output + getCustomInputLine(columnOrAlikeInfo = columnOrAlikeInfo,
+                                            isEnd = isEnd)
     output = output + getConditionsInputLines()
     return output 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -98,7 +113,7 @@ def __getInitCode(sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMe
   #         the class' closure
   def getCommonCodeLinesAtStart() -> str:
     # See: https://stackoverflow.com/questions/71879642/how-to-pass-function-with-super-when-creating-class-dynamically
-    capsuleClassName = _capsule_utils.getCapsuleClassName(sqlalchemyTableType=sqlalchemyTableType)
+    capsuleClassName = _capsule_utils.getCapsuleClassName(sqlalchemyTableType=capsuleType.sqlalchemyTableType)
     notNewOrDirty = _capsule_utils.INIT_ENFORCE_NOT_NEW_OR_DIRTY_FLAG
     output = ""
     output = output + f"{' ' * 2}super({capsuleClassName}, self).__init__(session = session,\n"
@@ -106,18 +121,25 @@ def __getInitCode(sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMe
     return output
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # The code lines handling the input parameters of each column      
-  def getCustomCodeLines(columns) -> str:  
+  def getCustomCodeLines(columnsAndAlikeInfo: typing.Dict[str, typing.Tuple[str, bool, bool]]) -> str:  
     output = ""
-    for column in columns:
-      output = output + f"{' ' * 2}self._omit_none_{column.name}({column.name})\n"    
-      if _capsule_utils.isRelationshipIdColumn(column=column):
-        relSqlaObjectTypeName = _capsule_utils.getRelationshipTypeName(sqlalchemyTableType=sqlalchemyTableType, 
-                                                                       column=column)
+    for columnOrAlikeInfo in columnsAndAlikeInfo.values():
+      itemName = columnOrAlikeInfo[0]
+      isHybridProperty = columnOrAlikeInfo[1]
+      output = output + f"{' ' * 2}self._omit_none_{itemName}({itemName})\n"    
+      if _capsule_utils.isRelationshipIdColumnName(columnName=itemName):
+        if isHybridProperty:
+          relationshipName = _capsule_utils.getColumnToRelationshipName(columnName=itemName)
+          relSqlaObjectTypeName = getattr(capsuleType.sqlalchemyTableType, relationshipName).fget.__annotations__['return']
+          relSqlaObjectTypeName = relSqlaObjectTypeName.__name__
+        else:
+          relSqlaObjectTypeName = _capsule_utils.getRelationshipTypeNameOfColumnName(sqlalchemyTableType=capsuleType.sqlalchemyTableType, 
+                                                                      columnName=itemName)
         relSqlaObjectType = callingGlobals[relSqlaObjectTypeName]
         if hasattr(relSqlaObjectType, 'name'):
-          relationshipName = _capsule_utils.getRelationshipNameFieldOfColumn(column=column)
+          relationshipName = _capsule_utils.getColumnRelationshipNameField(columnName=itemName)
           output = output + f"{' ' * 2}self._omit_none_{relationshipName}({relationshipName})\n"
-        relColumnName = _capsule_utils.getRelationshipNameOfColumn(column=column)
+        relColumnName = _capsule_utils.getColumnToRelationshipName(columnName=itemName)
         output = output + f"{' ' * 2}if {relColumnName} is not None:\n"
         output = output + f"{' ' * 4}self.sqlalchemyTable.{relColumnName} = {relColumnName}.sqlalchemyTable\n"
     return output 
@@ -128,27 +150,27 @@ def __getInitCode(sqlalchemyTableType: typing.Type[sqlalchemy_decl.DeclarativeMe
     return output
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # The complete code body of the function      
-  def getCodeLines(columns) -> str:  
+  def getCodeLines(columnsAndAlikeInfo: typing.Dict[str, typing.Tuple[str, bool, bool]]) -> str:  
     # getCommonCodeLinesAtEnd() FIXME: add consistency checks to capsule
     return getCommonCodeLinesAtStart() + \
-           getCustomCodeLines(columns=columns) + \
+           getCustomCodeLines(columnsAndAlikeInfo = columnsAndAlikeInfo) + \
            getCommonCodeLinesAtEnd()
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # identification of the column not hidden to the outside
-  nonChangeTrackColumns = _capsule_utils.getNonChangeTrackColumns(sqlalchemyTableType = sqlalchemyTableType)   
+  columnsAndAlikeInfo = _capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties(capsuleType = capsuleType)
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # The complete function definition:
-  return getInitDef(sqlalchemyTableType = sqlalchemyTableType, 
-                    columns = nonChangeTrackColumns) + \
-         getCodeLines(columns = nonChangeTrackColumns)
+  return getInitDef(capsuleType = capsuleType, 
+                    columnsAndAlikeInfo = columnsAndAlikeInfo) + \
+         getCodeLines(columnsAndAlikeInfo = columnsAndAlikeInfo)
 
 
 def addInitMethods(capsuleList: typing.List[T],
                    callingGlobals):
   for capsuleType in capsuleList:
     sqlalchemyTableType = capsuleType.sqlalchemyTableType
-    initCodeString = __getInitCode(sqlalchemyTableType = sqlalchemyTableType, 
+    initCodeString = __getInitCode(capsuleType = capsuleType, 
                                    callingGlobals = callingGlobals)
     
     # this_file_path = os.path.dirname(__file__)
@@ -157,10 +179,14 @@ def addInitMethods(capsuleList: typing.List[T],
     # file_name = full_file_path + '/' + capsuleType.__name__ + '.txt'
     # with open(file_name, 'w') as file:
     #   file.write(initCodeString)
-    if capsuleType.__name__ == "MarketAndForwardTransactionCapsule":
+    if capsuleType.__name__ == DEBUG_CAPSULE_TYPE:
       print(f"setupCode {capsuleType.__name__}: \n{initCodeString}")
-      
-    exec(initCodeString , callingGlobals)
+    try:    
+      exec(initCodeString , callingGlobals)
+    except Exception as e: 
+      print(f"initCodeString: {initCodeString}")
+      print(f"Error executing init code for {capsuleType.__name__}: {e}")
+      raise e
     initMethod = callingGlobals[_capsule_utils.getInitFncName(sqlalchemyTableType=sqlalchemyTableType)]
     initMethodDecorated = _capsule_base.cleanAndCloseSession(
                                       func = initMethod)
