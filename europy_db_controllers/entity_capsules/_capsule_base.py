@@ -263,6 +263,16 @@ class CapsuleBase():
   def hasValueInput(self) -> bool:
     return self._hasValueInput
   
+  @property
+  def isNew(self) -> bool:
+    if self.sqlalchemyTable is None: return False
+    return self.sqlalchemyTable in self.session.new
+
+  @property
+  def isDeleted(self) -> bool:
+    if self.sqlalchemyTable is None: return False 
+    return self.sqlalchemyTable in self.session.deleted
+
 
 
 class CapsuleBaseWithName(CapsuleBase):
