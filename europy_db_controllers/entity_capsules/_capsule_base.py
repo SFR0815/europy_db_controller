@@ -57,10 +57,41 @@ class CapsuleBase():
   _referred_by_name_capsules = []  
 
   sqlalchemyTableType: any
+  # def _setAttributeOnSqlalchemyTable(self, attributeName: str, value: any):
+  #   setHybridPropertyOnSqlalchemyTableFncName = getSetHybridPropertyOnSqlalchemyTableFncName(attributeName)
+  #   if hasattr(self, setHybridPropertyOnSqlalchemyTableFncName):
+  #     print(f"\n\n[_setAttributeOnSqlalchemyTable] - self: {self} \n" + \
+  #           f"  setHybridPropertyOnSqlalchemyTableFncName: {setHybridPropertyOnSqlalchemyTableFncName} " + \
+  #           f"  value: {value}")
+  #     # getattr(self, setHybridPropertyOnSqlalchemyTableFncName)(value)
+  #   else:
+  #     setattr(self.sqlalchemyTable, attributeName, value)
+  """
+  Problem:
+    the deep recursion issue is because by the line getattr(self, setHybridPropertyOnSqlalchemyTableFncName)(value), 
+    it is calling the same _setAttributeOnSqlalchemyTable function recursively. 
+    This occurs because setHybridPropertyOnSqlalchemyTableFncName refers to a function that in turn attempts to set the same attribute, 
+    causing an infinite loop.
+  
+  Explanation of the changes:
+    - Added a temporary attribute is_setting_attribute to prevent the function from calling itself recursively.
+    - Before calling getattr:
+          a check is made to see if is_setting_attribute is False. 
+          If so, it is set to True before calling the function and reset to False after the call.
+  """
   def _setAttributeOnSqlalchemyTable(self, attributeName: str, value: any):
     setHybridPropertyOnSqlalchemyTableFncName = getSetHybridPropertyOnSqlalchemyTableFncName(attributeName)
     if hasattr(self, setHybridPropertyOnSqlalchemyTableFncName):
-      getattr(self, setHybridPropertyOnSqlalchemyTableFncName)(value)
+      print(f"\n\n[_setAttributeOnSqlalchemyTable] - self: {self} \n" + \
+            f"  setHybridPropertyOnSqlalchemyTableFncName: {setHybridPropertyOnSqlalchemyTableFncName} " + \
+            f"  value: {value}")
+      # Check to prevent deep recursion
+      if not getattr(self, 'is_setting_attribute', False):
+        print(f"\n --------------- set flag --------------")
+        setattr(self, 'is_setting_attribute', True)  # Set a flag to indicate we're setting the attribute
+        getattr(self, setHybridPropertyOnSqlalchemyTableFncName)(value)
+        print(f" --------------- reset flag --------------\n")
+        setattr(self, 'is_setting_attribute', False)  # Reset the flag
     else:
       setattr(self.sqlalchemyTable, attributeName, value)
 
