@@ -13,7 +13,6 @@ from openpyxl.worksheet import worksheet as pxl_sht
 from openpyxl.cell import cell as pxl_cell
 from openpyxl.worksheet import cell_range as pxl_rng
 
-sys.path.insert(0, '..\..\..')
 
 from europy_db_controllers import _controller_base
 from europy_db_controllers.entity_capsules import _capsule_utils, _capsule_base
@@ -104,24 +103,25 @@ class ColControl():
     self._rowControl.updateColumnLabelRow(
                   columnLableRow=headDepth + 1)
   def __getRelationshipFeatures(self,
-                                relationship: sqlalchemy_orm.Relationship,
+                                relationship_name: str,
+                                relationship_capsule_type: typing.Type[CT],
                                 ) -> typing.Tuple[bool, 
                                                   bool,
                                                   bool, 
                                                   bool]:
     def relationshipIsPartOfListOf() -> bool:
       if hasattr(self._sqlalchemyType, '_is_part_of_list_of'):
-        if relationship.key in self._sqlalchemyType._is_part_of_list_of:
+        if relationship_name in self._sqlalchemyType._is_part_of_list_of:
           return True
       return False
-    isDisplayList = _capsule_utils.isDisplayList(
+    is_display_list = _capsule_utils.isDisplayList(
                 sqlalchemyTableType = self._sqlalchemyType,
-                relationship = relationship)
-    isExcludedFromJson = relationship.key in self._sqlalchemyType._exclude_from_json
-    relationshipDecl = relationship.mapper.class_
-    relationshipDeclHasName = hasattr(relationshipDecl, 'name')
-    isPartOfListOf = relationshipIsPartOfListOf()
-    return(isDisplayList, isExcludedFromJson, isPartOfListOf, relationshipDeclHasName)
+                relationshipName = relationship_name)
+    is_excluded_from_json = relationship_name in self._sqlalchemyType._exclude_from_json
+    sqlalchemy_table_type = relationship_capsule_type.sqlalchemyTableType
+    relationship_table_has_name= hasattr(sqlalchemy_table_type, 'name')
+    is_list = relationshipIsPartOfListOf()
+    return(is_display_list, is_excluded_from_json, is_list, relationship_table_has_name)
   def __getRelationshipDefinitions(self,
                                    relationship: sqlalchemy_orm.Relationship
                                    ) -> typing.Tuple[str, 
@@ -139,17 +139,17 @@ class ColControl():
         relCapsuleType = capsuleType
         return (relName, relDecl, relDeclTable, relCapsuleType)
   def __getRelationshipDefinitionsOfColumn(self,
-                                           column: sqlalchemy_schema.Column
+                                           column_name: sqlalchemy_schema.Column
                                            ) -> typing.Tuple[str, 
                                                              sqlalchemy_orm.Relationship, 
                                                              sqlalchemy_decl.DeclarativeMeta,
                                                              sqlalchemy_schema.Table, 
                                                              type[CT]]:
-    relName: str = _capsule_utils.getRelationshipNameOfColumn(column=column)
-    rel: sqlalchemy_orm.Relationship = self._relationships[relName]
-    relName, relDecl, relDeclTable, relCapsuleType = \
+    rel_name: str = _capsule_utils.getColumnToRelationshipName(columnName=column_name)
+    rel: sqlalchemy_orm.Relationship = self._relationships[rel_name]
+    rel_name, rel_decl, rel_decl_table, rel_capsule_type = \
             self.__getRelationshipDefinitions(relationship=rel)
-    return (relName, rel, relDecl, relDeclTable, relCapsuleType)
+    return (rel_name, rel, rel_decl, rel_decl_table, rel_capsule_type)
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # INIT: Define structure of sheet content   
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -161,36 +161,62 @@ class ColControl():
                                                  colControl = self)
     self.columns[dCL.label] = dCL
   def __addSingleRelationship(self,
-                              column: sqlalchemy_schema.Column) -> None:
-    relationshipName, relationship, relationshipDecl, \
-    relationshipDeclTable, relationshipCapsuleType = \
-                self.__getRelationshipDefinitionsOfColumn(column = column)
-    isExcludedFromJson, isPartOfListOf, relationshipDeclHasName = \
-                self.__getRelationshipFeatures(relationship = relationship)[1:]
+                              columnOrAlikeInfo: typing.Tuple[str, bool, bool]) -> None:
+    column_name = columnOrAlikeInfo[0]
+    is_hybrid_property = columnOrAlikeInfo[1]
+    def getRelationshipCapsuleTypeOfName(relatiohshipCapsuleTypeName: str):
+      for capsuleType in self._capsuleList:
+        if capsuleType.__name__ == relatiohshipCapsuleTypeName:
+         return capsuleType
+    relationshipName, is_list, relationship_sqlalchemy_type_name = \
+                    _capsule_utils.getRelationshipCapsuleBasicSpecOfIdColumnName(
+                                              idColumnName = column_name,
+                                              isHybridProperty = is_hybrid_property,
+                                              capsuleType = self._capsuleType)
+    relationship_capsule_type_name = _capsule_utils.getSqlaToCapsuleName(
+                                                        sqlaTableName = relationship_sqlalchemy_type_name)
+    relationship_capsule_type = getRelationshipCapsuleTypeOfName(
+                                                        relatiohshipCapsuleTypeName= relationship_capsule_type_name)
+    is_excluded_from_json, is_list, relationship_table_has_name = \
+                self.__getRelationshipFeatures(
+                  relationship_name = relationshipName,
+                  relationship_capsule_type = relationship_capsule_type)[1:]
     # If the relationship is excluded from json but has a name, then the 
     #   relationship's 'name' field of the capsule is added as a Column 
     #   to the ColControl 
     #   The 'isPartOfListOf' avoids the inclusion of such 'name'-column in case of
     #   the current capsule is part of a list of the parent ColControl (is redundant
     #   information in such case).
-    if isExcludedFromJson:
-      if relationshipDeclHasName and not isPartOfListOf:
-        relationshipNameAttrName = _capsule_utils.getRelationshipNameFieldOfColumn(column=column)
-        validation = self.validations.getValidationOfCapsuleKey(capsuleKey = relationshipCapsuleType._key())
+    if is_excluded_from_json:
+      if relationship_table_has_name and not is_list:
+        relationshipNameAttrName = _capsule_utils.getColumnRelationshipNameField(columnName = column_name)
+        validation = self.validations.getValidationOfCapsuleKey(capsuleKey = relationship_capsule_type._key())
         self._addColumn(label = relationshipNameAttrName,
                         validation = validation,
                         unique=False,
                         sqlalchemyDataType = "") # omit type validation as validated by source
     else:
-      self._addSubColControl(capsuleType = relationshipCapsuleType,
+      self._addSubColControl(capsuleType = relationship_capsule_type,
                              isList = False,
                              relationshipKey = relationshipName)
   def __addListRelationship(self,
                             relationship: sqlalchemy_orm.Relationship) -> None:
-    isDisplayList, isExcludedFromJson = self.__getRelationshipFeatures(relationship = relationship)[:2]
-    if not (isDisplayList or isExcludedFromJson):
-      relationshipName, relationshipDecl, \
-      relationshipDeclTable, relationshipCapsuleType = \
+    def getRelationshipCapsuleTypeOfName(relationship_capsule_type_name: str):
+      for capsuleType in self._capsuleList:
+        if capsuleType.__name__ == relationship_capsule_type_name:
+         return capsuleType
+    relationship_sqlalchemy_type_name = relationship.mapper.class_.__name__
+    relationship_capsule_type_name = _capsule_utils.getSqlaToCapsuleName(
+                                                        sqlaTableName = relationship_sqlalchemy_type_name)
+    relationship_capsule_type = getRelationshipCapsuleTypeOfName(
+                                                        relationship_capsule_type_name = relationship_capsule_type_name)
+    
+
+    is_display_list, is_excluded_from_json = self.__getRelationshipFeatures(
+                                  relationship_name = relationship.key,
+                                  relationship_capsule_type=relationship_capsule_type)[:2]
+    if not (is_display_list or is_excluded_from_json):
+      relationshipName, _, _, relationshipCapsuleType = \
                 self.__getRelationshipDefinitions(relationship = relationship)  
       self._addSubColControl(capsuleType = relationshipCapsuleType,
                              isList = True,
@@ -229,17 +255,23 @@ class ColControl():
     self.sht: pxl_sht.Worksheet = None
 
     self.__addDeleteControlColumn()
-    for column in self._table.columns:
-      columnName = column.name
-      if columnName in self._sqlalchemyType._changeTrackFields:
+    #FIXME: update this iteration using the _capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties
+    sqlalchemyTableType = self._capsuleType.sqlalchemyTableType
+    columnsAndAlikeInfo = _capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties(
+                        capsuleType = capsuleType)
+    for column_name, column_info in columnsAndAlikeInfo.items():
+      if column_name in self._sqlalchemyType._changeTrackFields:
         pass # internal change control only
-      elif _capsule_utils.isRelationshipIdColumn(column=column):
-        self.__addSingleRelationship(column = column)
+      elif _capsule_utils.isRelationshipIdColumnName(columnName=column_name):
+        # self.__addSingleRelationship(column = column)
+        self.__addSingleRelationship(columnOrAlikeInfo = column_info)
       else:
-        self._addColumn(label = columnName,
+        column_of_name = sqlalchemyTableType.__table__.columns[column_name]
+        self._addColumn(label = column_name,
                         validation=None,
-                        unique = True if columnName == 'id' else column.unique,
-                        sqlalchemyDataType = str(column.type))
+                        unique = True if column_name == 'id' else column_of_name.unique,
+                        sqlalchemyDataType = str(column_of_name.type))
+
     for relationship in self._relationships:
       if relationship.uselist:
         self.__addListRelationship(relationship = relationship)
@@ -253,7 +285,6 @@ class ColControl():
                                     subControllerKey = self.subControllerKey,
                                     controllerKeyEnum = self.controllerKeyEnum,
                                     validation=validation,
-                                    columnNumber = self._width() + self.firstCol,
                                     rowControl = self._rowControl,
                                     colControl = self,
                                     unique = unique,
@@ -384,6 +415,8 @@ class ColControl():
         #     print(f"    row: {cellTuple[0].row} - column: {cellTuple[0].column} - cellTuple[0].value: {cellTuple[0].value}")
         if self.isEmptyColControlRow(row = row): continue
         valueDict = self.getColControlContent(row = row)
+        # if self._capsuleType.__name__.startswith('MarketTransaction'):
+        #   print(f"\n[_col_control._identifyData] colControlData.valueDict [dataBlock.isList]: {valueDict}\n")
         colControlData = col_control_data.ColControlData(colControlLabel = self.label,
                                                         sht = self.sht,
                                                         row = row,
@@ -402,6 +435,9 @@ class ColControl():
     else:
       for row in range(dataBlock.parent.dataRow, dataBlock.parent.maxRow + 1):
         valueDict = self.getColControlContent(row = dataBlock.dataRow)
+
+        # if self._capsuleType.__name__.startswith('MarketTransaction'):
+        #   print(f"\n[_col_control._identifyData] colControlData.valueDict [NOT dataBlock.isList]: {valueDict}\n")
         colControlData = col_control_data.ColControlData(colControlLabel = self.label,
                                                           sht = self.sht,
                                                           row = row,
@@ -460,35 +496,66 @@ class ColControl():
         
 
   def toDict(self,
-             dataEntry: data_block.DataBlock) -> typing.Dict[str, any]:
+             dataEntry: data_block.DataBlock,
+             do_print: bool = False) -> typing.Dict[str, any]:
+    def getRelationshipCapsuleTypeOfName(relationship_capsule_type_name: str):
+            for capsuleType in self._capsuleList:
+              if capsuleType.__name__ == relationship_capsule_type_name:
+               return capsuleType
     result: typing.Dict[str, any] = dict[str, any]()
     if not dataEntry.colControlData.hasDeleteMarker:
-      for column in self._table.columns:
-        columnName = column.name
-        if columnName in self._sqlalchemyType._changeTrackFields:
+      columnsAndAlikeInfo = _capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties(
+                        capsuleType = self._capsuleType)
+      for column_or_alike_name, column_info in columnsAndAlikeInfo.items():
+        isHybridProperty = column_info[1]
+        if column_or_alike_name in self._sqlalchemyType._changeTrackFields:
           pass # internal change control only
-        elif _capsule_utils.isRelationshipIdColumn(column=column):
-          relationshipName, relationship = self.__getRelationshipDefinitionsOfColumn(column = column)[:2]
-          isExcludedFromJson, relationshipDeclHasName = \
-                      self.__getRelationshipFeatures(relationship = relationship)[1:4:2]
-          if isExcludedFromJson:
-            if relationshipDeclHasName:
+        elif _capsule_utils.isRelationshipIdColumnName(columnName = column_or_alike_name):
+          relationship_name, _, relationship_sqlalchemy_type_name = \
+                          _capsule_utils.getRelationshipCapsuleBasicSpecOfIdColumnName(idColumnName = column_or_alike_name,
+                                                      isHybridProperty = isHybridProperty,
+                                                      capsuleType = self._capsuleType)
+          relationship_capsule_type_name = _capsule_utils.getSqlaToCapsuleName(
+                                                              sqlaTableName = relationship_sqlalchemy_type_name)
+          relationship_capsule_type = getRelationshipCapsuleTypeOfName(
+                                                              relationship_capsule_type_name = relationship_capsule_type_name)
+          is_excluded_from_json, relationship_decl_has_name = self.__getRelationshipFeatures(
+                            relationship_name = relationship_name,
+                            relationship_capsule_type = relationship_capsule_type)[1:4:2]
+        
+          if is_excluded_from_json:
+            if relationship_decl_has_name:
               # no control for 'isPartOfListOf' here. If 'isPartOfListOf', the value must be added
               #     to the dataEntry.colControlData while processing the parent, see below [#add name of parent].
-              relationshipNameAttrName = _capsule_utils.getRelationshipNameFieldOfColumn(column=column)
+              relationshipNameAttrName = _capsule_utils.getColumnRelationshipNameField(columnName = column_or_alike_name)
               value = dataEntry.colControlData.getValue(relationshipNameAttrName)
-              result[relationshipNameAttrName] = value              
+              result[relationshipNameAttrName] = value   
+              # print(f"[col_control.toDict] adding item to dict - column: {column_or_alike_name} is relationship column & excluded from json.\n" + \
+              #       f"                      result[{relationshipNameAttrName}] = {value}")           
           else:
-            relationshipDataEntry = dataEntry.getSubBlockOfName(colBlockName = relationshipName)
-            subColControl = self.subColControls[relationshipName]
-            result[relationshipName] = subColControl.toDict(dataEntry = relationshipDataEntry)
+            relationshipDataEntry = dataEntry.getSubBlockOfName(colBlockName = relationship_name)
+            subColControl = self.subColControls[relationship_name]
+            entryDict = subColControl.toDict(dataEntry = relationshipDataEntry)
+            result[relationship_name] = entryDict
+            # print(f"[col_control.toDict] adding item to dict - column: {column_or_alike_name} is relationship column & included from json.\n" + \
+            #       f"                      result[{relationship_name}] = {entryDict}")           
         else:
-          value = dataEntry.colControlData.getValue(columnName)
-          result[columnName] = value
+          value = dataEntry.colControlData.getValue(column_or_alike_name)
+          result[column_or_alike_name] = value
+          # print(f"[col_control.toDict] adding item to dict - column: {column_or_alike_name} data column.\n" + \
+          #       f"                      result[{column_or_alike_name}] = {value}")           
       for relationship in self._relationships:
         if relationship.uselist:
-          isDisplayList, isExcludedFromJson = self.__getRelationshipFeatures(relationship = relationship)[:2]
-          if not (isDisplayList or isExcludedFromJson):
+          
+          relationship_sqlalchemy_type_name = relationship.mapper.class_.__name__
+          relationship_capsule_type_name = _capsule_utils.getSqlaToCapsuleName(
+                                                              sqlaTableName = relationship_sqlalchemy_type_name)
+          relationship_capsule_type = getRelationshipCapsuleTypeOfName(
+                                                              relationship_capsule_type_name = relationship_capsule_type_name)
+          is_display_list, is_excluded_from_json = self.__getRelationshipFeatures(
+                            relationship_name = relationship.key,
+                            relationship_capsule_type = relationship_capsule_type)[:2]
+          if not (is_display_list or is_excluded_from_json):
 
             # relationshipName, relationshipTable = \
             #               self.__getRelationshipDefinitions(relationship = relationship)[0:3:2]  
@@ -514,6 +581,8 @@ class ColControl():
                 relationshipDataDict[entryCount] = relationshipDict
                 entryCount += 1
             result[relationshipName] = relationshipDataDict
+            # print(f"[col_control.toDict] adding item to dict - list relationship: {relationshipName}.\n" + \
+            #       f"                      result[{relationshipName}] = {relationshipDataDict}")           
     return result
 
   def getDeleteDict(self,

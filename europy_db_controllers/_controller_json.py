@@ -153,7 +153,7 @@ def __addFromDictFunctions(controllerType : type[T],
                   session: sqlalchemy_orm.Session,
                   controllerDict: dict[str, any],
                   persistentMustHaveId: bool = False) -> T:
-    # print(f"[_controller_json.fncFromDict]")
+    # print(f"\n[_controller_json.fncFromDict] - controllerClass: {self.__name__}")
     def ensureSomeControllerKeyInDict() -> None:
       for subControllerType in self._subControllerTypes:
         subControllerKey = subControllerType._key
@@ -193,8 +193,7 @@ def __addFromDictFunctions(controllerType : type[T],
                             f"class {self.__name__}. \n" + \
                             f"Key missing: {key}. \n" + \
                             "Dictionary:\n" + str(controllerDict))
-    output = controllerType(session = session)   
-    #print('ControllerDict: \n', controllerDict) 
+    output = controllerType(session = session)
     if len(self._key) == 0:
       ensureOnlyControllerKeyInDict()
       ensureSomeControllerKeyInDict()
@@ -216,7 +215,7 @@ def __addFromDictFunctions(controllerType : type[T],
       ensureAllKeysInSubControllerDict()
       relationshipEntitiesCatalog: typing.Dict[str, dict] = dict[str, dict]()
       for contentPos in range(0, len(self._content)):
-        # keys of sub controller and content of sub controller come in same order
+        # keys of sub controller and content of sub controller come in same order 
         contentType = self._content[contentPos]
         contentKey = self._keys[contentPos]
         if not contentKey in controllerDict: continue # do nothing if key not present
@@ -226,8 +225,7 @@ def __addFromDictFunctions(controllerType : type[T],
         # print(f"  asset>static core_account: {asset_static_ca}")
         for capsuleDict in contentDict.values():
           # Do not try to convert validation list entries into capsules
-
-          if contentType.__name__ == 'TransactionTypeCapsule':
+          if contentType.__name__ == 'MarketTransactionCapsule':
             print(f"[_controller_json.__addFromDictFunctions] {contentType.__name__} - contentDict: {contentDict}")
             
           if len(capsuleDict) == 1 and 'name' in capsuleDict: continue

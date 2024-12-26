@@ -558,7 +558,7 @@ def addListAttributes(capsuleList: typing.List[T],
         relationshipCapsuleClassName = _capsule_utils.getSqlaToCapsuleName(relationshipSqlaTableClassName)
         relationshipCapsuleClass = callingGlobals[relationshipCapsuleClassName]
         isDisplayList = _capsule_utils.isDisplayList(sqlalchemyTableType = sqlalchemyTableType,
-                                                     relationship = relationship)
+                                                     relationshipName = relationship.key)
         relationshipName = relationship.key
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Identify relationships that are lists (others treated above - if conventions met)                                                   relationship = relationship)

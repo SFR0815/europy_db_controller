@@ -38,17 +38,17 @@ class DataColumn():
                subControllerKey: _controller_base.BaseControllerKeyEnum,
                controllerKeyEnum: enum.Enum,
                validation: io_val_col.ValidationColumn,
-               columnNumber: int,
                rowControl: 'row_control.RowControl',
                colControl: 'col_control.ColControl',
                unique: bool, 
                sqlalchemyDataType: str
                ) -> None:
+  
+    # FIXME: remove columnNumber from inputs
     self.label: str = label
     self.subControllerKey = subControllerKey
     self.controllerKeyEnum = controllerKeyEnum
     self.validation = validation
-    self._colNo: int = columnNumber
     self.unique = unique
     self.sqlalchemyDataType = sqlalchemyDataType
     self._rowControl: 'row_control.RowControl' = rowControl
@@ -58,7 +58,21 @@ class DataColumn():
 
   @property
   def columnNumber(self) -> int:
-    return self._colNo
+    #  FIXME: get named range of column [self.localDataRangeName]
+    #         identify the column of the named range & ensure there is only one column
+    #         => e.g. use number of such column as column number when defining coordinates
+    # Get the named range of the column
+    if self.localDataRangeName not in self.sht.defined_names:
+      raise Exception(f"Named range '{self.localDataRangeName}' is not defined.")
+    defined_name = self.sht.defined_names[self.localDataRangeName]
+    destinations = list(defined_name.destinations)
+    # Ensure there is only one column in the named range
+    if len(destinations) != 1:
+      raise Exception("Expected exactly one column in the named range.")
+    # Extract the column number from the destination
+    _, coord = destinations[0]
+    min_col = pxl_rng.CellRange(range_string=coord).min_col
+    return min_col
   @property
   def rowControl(self) -> 'row_control.RowControl':
     return self._rowControl
@@ -71,8 +85,6 @@ class DataColumn():
   @property
   def labelCell(self) -> pxl_cell.Cell:
     return self.sht.cell(self.columnLabelRow, self.columnNumber)
-
-
   @property
   def dataRangeDelimiters(self) -> typing.Dict[str, int]:
     result = dict[str, int]()
@@ -180,7 +192,7 @@ class DataColumn():
       self.rowControl.updateDataRow(lastRow)
 
   def getValueOfRow(self, 
-                    row: int) -> any:
+                    row: int) -> any: 
     coords = sht_ut.getCellAddress(row = row,
                                    col = self.columnNumber)
     return self.sht[coords].value

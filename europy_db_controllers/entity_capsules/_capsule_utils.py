@@ -543,6 +543,8 @@ def getCapsuleInitColumnsAndColumnLikeProperties(capsuleType: T
     requiredHybridProperties = list(replacementInstructions.keys())
     resultKeys = list(result.keys())
     # No hybrid properties in init parameters if they do not replace a column
+    print(f"\n[_capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties] - resultKeys: {resultKeys}")
+        
     for resultKey in resultKeys:
         columnOrAlikeInfo = result[resultKey]
         keyIsReplacingHybridProperty = resultKey in requiredHybridProperties
@@ -561,6 +563,8 @@ def getCapsuleInitColumnsAndColumnLikeProperties(capsuleType: T
                              f"    CapsuleType       : {capsuleType.__name__} not in result" + \
                              f"    replacedColumnName: {replacedColumnName} not in result")
         # Remove the replaced column from the result dict
+        print(f"[_capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties] - removing: {replacedColumnName}")
+        
         del result[replacedColumnName]
     return result
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -909,31 +913,48 @@ def getRelationshipCapsuleTypeOfName(relationshipName: str,
                                         sqlalchemyTableType = sqlalchemyTableType)
     relationshipCapsuleTypeName = getSqlaToCapsuleName(sqlaTableName = relationshipTypeName)
     return callingGlobals[relationshipCapsuleTypeName]
-def getRelationshipCapsuleTypeSpecOfIdColumnName(idColumnName: str,
+def getRelationshipCapsuleBasicSpecOfIdColumnName(idColumnName: str,
                                                  isHybridProperty: bool,
-                                                 capsuleType: typing.Type[T],
-                                                 callingGlobals) -> typing.Tuple[str, typing.Type[T], bool]:
+                                                 capsuleType: typing.Type[T]) -> typing.Tuple[str, typing.Type[T], bool]:
     if not isRelationshipIdColumnName(columnName = idColumnName):
         raise Exception(f"[_capsule_utils.getRelationshipCapsuleTypeSpecOfIdColumnName] " + \
                         f"Column name '{idColumnName}' is not an id column of a relationship.")
     relationshipName = getColumnToRelationshipName(columnName = idColumnName)
     if isHybridProperty:
         relationshipType = getattr(capsuleType.sqlalchemyTableType, relationshipName).fget.__annotations__['return']
-        relationShipTypeClassName = relationshipType.__name__
+        relationshipSqlalchemyTypeName = relationshipType.__name__
         list_prefixes = ['list', 'List', 'typing.List']
         prefix_index = next((i for i, prefix in enumerate(list_prefixes) 
-                           if relationShipTypeClassName.startswith(prefix)), -1)
+                           if relationshipSqlalchemyTypeName.startswith(prefix)), -1)
         isList = prefix_index >= 0
         if isList:
             if prefix_index >= 0:
                 prefix = list_prefixes[prefix_index]
-                relationShipTypeClassName = relationShipTypeClassName[len(prefix):]
-            starts_with_bracket = relationShipTypeClassName.startswith('[')
-            ends_with_bracket = relationShipTypeClassName.endswith(']')
+                relationshipSqlalchemyTypeName = relationshipSqlalchemyTypeName[len(prefix):]
+            starts_with_bracket = relationshipSqlalchemyTypeName.startswith('[')
+            ends_with_bracket = relationshipSqlalchemyTypeName.endswith(']')
             if starts_with_bracket and ends_with_bracket:
-                relationShipTypeClassName = relationShipTypeClassName[1:-1]
+                relationshipSqlalchemyTypeName = relationshipSqlalchemyTypeName[1:-1]
+    else:
+        relationship = capsuleType.sqlalchemyTableType.__mapper__.relationships[relationshipName]
+        relationshipSqlalchemyTypeName = relationship.mapper.class_.__name__
+        isList = relationship.uselist
+    return (relationshipName, isList, relationshipSqlalchemyTypeName)
+def getRelationshipCapsuleTypeSpecOfIdColumnName(idColumnName: str,
+                                                 isHybridProperty: bool,
+                                                 capsuleType: typing.Type[T],
+                                                 callingGlobals) -> typing.Tuple[str, typing.Type[T], bool]:
+    relationshipName, isList, relationshipSqlalchemyTypeName = \
+        getRelationshipCapsuleBasicSpecOfIdColumnName(idColumnName = idColumnName,
+                                                      isHybridProperty = isHybridProperty,
+                                                      capsuleType = capsuleType)
+    if not isRelationshipIdColumnName(columnName = idColumnName):
+        raise Exception(f"[_capsule_utils.getRelationshipCapsuleTypeSpecOfIdColumnName] " + \
+                        f"Column name '{idColumnName}' is not an id column of a relationship.")
+    relationshipName = getColumnToRelationshipName(columnName = idColumnName)
+    if isHybridProperty:
         hybridPropertyCapsuleClassName = getSqlaToCapsuleName(
-                                            sqlaTableName = relationShipTypeClassName)
+                                            sqlaTableName = relationshipSqlalchemyTypeName)
         relationshipType = callingGlobals[hybridPropertyCapsuleClassName]
     else:
         relationshipType = getRelationshipCapsuleTypeOfName(
@@ -946,7 +967,7 @@ def getRelationshipCapsuleTypeSpecOfIdColumnName(idColumnName: str,
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Identification of the relationship properties
 def isDisplayList(sqlalchemyTableType,
-                  relationship: sqlalchemy.Relationship) -> bool:
+                  relationshipName: str) -> bool:
     """
     Checks if a relationship is part of the display list for a SQLAlchemy Declarative type.
     
@@ -959,7 +980,7 @@ def isDisplayList(sqlalchemyTableType,
     """
     if hasattr(sqlalchemyTableType, "_display_lists"):
         displayLists = sqlalchemyTableType._display_lists
-        return relationship.key in displayLists
+        return relationshipName in displayLists
     else:
         return False
   

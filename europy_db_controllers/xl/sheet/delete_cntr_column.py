@@ -53,7 +53,6 @@ class DeleteControlColumn(data_column.DataColumn):
                      subControllerKey = subControllerKey,
                      controllerKeyEnum = controllerKeyEnum,
                      validation = None,
-                     columnNumber = columnNumber,
                      rowControl = rowControl,
                      colControl = colControl, 
                      unique = False,
