@@ -41,8 +41,7 @@ def __addToJsonFunction(capsuleType: type[T],
         isIdColumn = columnName == 'id'
         if isRelationshipColumn:
           relationship = _capsule_utils.getRelationship(sqlalchemyTableType = sqlalchemyTableType,
-                                                        column = column,
-                                                        callingGlobals = callingGlobals)
+                                                        column = column)
           relationshipCapsuleType = _capsule_utils.getRelationshipCapsuleTypeOfName( 
                                                         relationshipName = relationship.key, 
                                                         sqlalchemyTableType = sqlalchemyTableType, 
