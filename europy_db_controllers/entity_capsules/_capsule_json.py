@@ -183,8 +183,12 @@ def __addFromJsonFunction(capsuleType: type[T],
       if isIdentifiedRelationship:
         idOnRelationshipDict = relationshipDict['id']
         if self.__name__ == 'AssetClassCapsule':
-          print(f"\nresultEntity: {resultEntity.__class__} - relationshipName: {relationshipName} - columnName: {columnName}")
-        relationshipIdOnMainCapsule = getattr(resultEntity, relationshipName + '_id')
+          print(f"\nresultEntity: {resultEntity.__class__}\n" + \
+                f"  relationshipName: {relationshipName} - columnName: {columnName}")
+        #fix: using 'relationshipName' for get the id field of the relationshipEntity
+        #     e.g. relationship_id_field_name = relationshipName + _id
+        relationship_id_field_name = relationshipName + '_id'
+        relationshipIdOnMainCapsule = getattr(resultEntity, relationship_id_field_name)
         # if relationship is not identified by name but by id check id consistency
         if not idOnRelationshipDict is None:
           if type(idOnRelationshipDict) is uuid.UUID:
