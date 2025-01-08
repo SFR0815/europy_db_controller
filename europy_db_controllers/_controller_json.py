@@ -225,8 +225,8 @@ def __addFromDictFunctions(controllerType : type[T],
         # print(f"  asset>static core_account: {asset_static_ca}")
         for capsuleDict in contentDict.values():
           # Do not try to convert validation list entries into capsules
-          if contentType.__name__ == 'MarketTransactionCapsule':
-            print(f"[_controller_json.__addFromDictFunctions] {contentType.__name__} - contentDict: {contentDict}")
+          # if contentType.__name__ == 'AssetClassCapsule':
+          #   print(f"[_controller_json.__addFromDictFunctions] {contentType.__name__} - contentDict: {contentDict}")
             
           if len(capsuleDict) == 1 and 'name' in capsuleDict: continue
           _ = contentType.fromDict(session = output.session,

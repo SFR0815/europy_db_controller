@@ -64,7 +64,7 @@ def __addToJsonFunction(capsuleType: type[T],
     nameOfDictFnc = _capsule_utils.getToDictFncName()
     for relationship in sqlalchemyTableType.__mapper__.relationships:
       relationshipName = relationship.key
-      print(f"\n\n[_capsule_json.fncToDict] - relationshipName: {relationshipName}")
+      # print(f"\n\n[_capsule_json.fncToDict] - relationshipName: {relationshipName}")
       if not relationshipName in noJsonFields:
         if relationship.uselist:
           sqlalchemyTableType = capsuleType.sqlalchemyTableType
@@ -182,7 +182,9 @@ def __addFromJsonFunction(capsuleType: type[T],
       isIdentifiedRelationship = not getattr(resultEntity, relationshipName) is None
       if isIdentifiedRelationship:
         idOnRelationshipDict = relationshipDict['id']
-        relationshipIdOnMainCapsule = getattr(resultEntity, columnName)
+        if self.__name__ == 'AssetClassCapsule':
+          print(f"\nresultEntity: {resultEntity.__class__} - relationshipName: {relationshipName} - columnName: {columnName}")
+        relationshipIdOnMainCapsule = getattr(resultEntity, relationshipName + '_id')
         # if relationship is not identified by name but by id check id consistency
         if not idOnRelationshipDict is None:
           if type(idOnRelationshipDict) is uuid.UUID:
@@ -218,6 +220,8 @@ def __addFromJsonFunction(capsuleType: type[T],
         else:
           # set the id parameter of the relationship (if none) as provided in the dict
           #     equal to the one identified on DB
+          if self.__name__ == 'AssetClassCapsule':
+            print(f"relationshipIdOnMainCapsule: {relationshipIdOnMainCapsule}")
           relationshipDict['id'] = relationshipIdOnMainCapsule
         result = getattr(relationshipCapsuleClass, nameOfDictFnc)(
                         session = session, 
@@ -276,9 +280,9 @@ def __addFromJsonFunction(capsuleType: type[T],
         # if self.__name__ == DEBUG_CAPSULE_TYPE and \
         #         relationship_type.__name__ == DEBUG_CAPSULE_TYPE_SINGLE_RELATIONSHIP:  
         #   print(f"[_capsule_json.addSingleRelatedEntity] {capsuleType.__name__} - relationshipName: {relationship_type_name} is excluded from json")
-        if capsuleType.__name__ == DEBUG_CAPSULE_TYPE:
-          print(f"[_capsule_json.addSingleRelatedEntity] - relationship_type_name       : {relationship_type_name}")
-          print(f"[_capsule_json.addSingleRelatedEntity] - relationshipNameAttributeName: {relationshipNameAttributeName}")
+        # if capsuleType.__name__ == DEBUG_CAPSULE_TYPE:
+        #   print(f"[_capsule_json.addSingleRelatedEntity] - relationship_type_name       : {relationship_type_name}")
+        #   print(f"[_capsule_json.addSingleRelatedEntity] - relationshipNameAttributeName: {relationshipNameAttributeName}")
           
         relationshipEntity = getExcludedFromJsonSingleRelatedEntity(
                               session = session,
@@ -362,7 +366,7 @@ def __addFromJsonFunction(capsuleType: type[T],
     sqlalchemyTableType = capsuleType.sqlalchemyTableType
     ## Identify the fields that are excluded from json
     noJsonFields = sqlalchemyTableType._exclude_from_json
-    print(f"[_capsule_json.fromDict] - noJsonFields: {noJsonFields}")
+    # print(f"[_capsule_json.fromDict] - noJsonFields: {noJsonFields}")
     ## Identify the columns that are not merely used for change tracking
     
     columnsAndAlikeInfo = _capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties(capsuleType = capsuleType)
@@ -431,9 +435,9 @@ def __addFromJsonFunction(capsuleType: type[T],
       #          to resultId - no test or error needed. 
 
     # if the relationships' json has been provided, 
-    for column_name, column_info in columnsAndAlikeInfo.items():
-      if not column_name in noJsonFields:
-        print(f"[_capsule_json.fromDict] - not column_name in noJsonFields: {column_name}")
+    # for column_name, column_info in columnsAndAlikeInfo.items():
+    #   if not column_name in noJsonFields:
+    #     print(f"[_capsule_json.fromDict] - not column_name in noJsonFields: {column_name}")
     for column_name, column_info in columnsAndAlikeInfo.items():
       is_hybrid_property = column_info[1]
       if not column_name in noJsonFields:

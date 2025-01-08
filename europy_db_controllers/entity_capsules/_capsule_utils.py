@@ -543,7 +543,7 @@ def getCapsuleInitColumnsAndColumnLikeProperties(capsuleType: T
     requiredHybridProperties = list(replacementInstructions.keys())
     resultKeys = list(result.keys())
     # No hybrid properties in init parameters if they do not replace a column
-    print(f"\n[_capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties] - resultKeys: {resultKeys}")
+    # print(f"\n[_capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties] - resultKeys: {resultKeys}")
         
     for resultKey in resultKeys:
         columnOrAlikeInfo = result[resultKey]
@@ -563,7 +563,7 @@ def getCapsuleInitColumnsAndColumnLikeProperties(capsuleType: T
                              f"    CapsuleType       : {capsuleType.__name__} not in result" + \
                              f"    replacedColumnName: {replacedColumnName} not in result")
         # Remove the replaced column from the result dict
-        print(f"[_capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties] - removing: {replacedColumnName}")
+        # print(f"[_capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties] - removing: {replacedColumnName}")
         
         del result[replacedColumnName]
     return result
