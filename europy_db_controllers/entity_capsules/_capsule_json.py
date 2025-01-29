@@ -182,9 +182,9 @@ def __addFromJsonFunction(capsuleType: type[T],
       isIdentifiedRelationship = not getattr(resultEntity, relationshipName) is None
       if isIdentifiedRelationship:
         idOnRelationshipDict = relationshipDict['id']
-        if self.__name__ == 'AssetClassCapsule':
-          print(f"\nresultEntity: {resultEntity.__class__}\n" + \
-                f"  relationshipName: {relationshipName} - columnName: {columnName}")
+        # if self.__name__ == 'AssetClassCapsule':
+        #   print(f"\nresultEntity: {resultEntity.__class__}\n" + \
+        #         f"  relationshipName: {relationshipName} - columnName: {columnName}")
         #fix: using 'relationshipName' for get the id field of the relationshipEntity
         #     e.g. relationship_id_field_name = relationshipName + _id
         relationship_id_field_name = relationshipName + '_id'
@@ -224,8 +224,8 @@ def __addFromJsonFunction(capsuleType: type[T],
         else:
           # set the id parameter of the relationship (if none) as provided in the dict
           #     equal to the one identified on DB
-          if self.__name__ == 'AssetClassCapsule':
-            print(f"relationshipIdOnMainCapsule: {relationshipIdOnMainCapsule}")
+          # if self.__name__ == 'AssetClassCapsule':
+          #   print(f"relationshipIdOnMainCapsule: {relationshipIdOnMainCapsule}")
           relationshipDict['id'] = relationshipIdOnMainCapsule
         result = getattr(relationshipCapsuleClass, nameOfDictFnc)(
                         session = session, 

@@ -87,6 +87,16 @@ def __ensureConsistentRelationshipName(capsule: T,
 #         (<capsule>.sqlalchemyTable.<relationshipName>.id)
 def __ensureConsistentRelationshipId(capsule: T,
                                      dictAttributeNamingConventions: dict[str, str]):
+  do_debug = False
+  try:
+    do_debug = capsule.name == "A Fund 1"
+  except:
+    do_debug = False
+
+
+  if do_debug:
+    print(f"        [_capsule_consistency.__ensureConsistentRelationshipId] on capsule {capsule.__class__.__name__} starting")
+  
   relationshipIdAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_ID]
   relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -96,10 +106,32 @@ def __ensureConsistentRelationshipId(capsule: T,
                                                        dictAttributeNamingConventions = dictAttributeNamingConventions) 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Identify the sqlalchemyTable of the relationship's entity
-  with capsule.session.no_autoflush:
-    relationshipSqlaTable = getattr(capsule.sqlalchemyTable, relationshipName)
+  
+  try:
+
+    if do_debug:
+      print(f"        [_capsule_consistency.__ensureConsistentRelationshipId] on capsule {capsule.__class__.__name__} sourcing {capsule.sqlalchemyTable.__class__.__name__}, relationshipName: {relationshipName}")
+
+    with capsule.session.no_autoflush:
+      relationshipSqlaTable = getattr(capsule.sqlalchemyTable, relationshipName)
+
+    if do_debug:
+      print(f"        [_capsule_consistency.__ensureConsistentRelationshipId] on capsule {capsule.__class__.__name__} identified {capsule.sqlalchemyTable.__class__.__name__}, relationshipName: {relationshipName}")
+
+  except:
+
+    if do_debug:
+      print(f"        [_capsule_consistency.__ensureConsistentRelationshipId] on capsule {capsule.__class__.__name__} error on {capsule.sqlalchemyTable.__class__.__name__}, relationshipName: {relationshipName}")
+
+    print(f"relationshipSqlaTable = getattr(capsule.sqlalchemyTable, relationshipName) let to Exception")
+    print(f" - trying to source it based on name. sqlalchemyTable: {capsule.sqlalchemyTable.__class__.__name__}, relationshipName: {relationshipName}")
+    raise Exception("something wrong")
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Exit if the sqlalchemyTable of the relationship's entity is not defined yet
+
+  if do_debug:
+    print(f"        [_capsule_consistency.__ensureConsistentRelationshipId] continues")
+  
   if relationshipSqlaTable is None: 
     # do nothing if no property sqlalchemyTable
     return 
@@ -154,11 +186,31 @@ def __ensureConsistentRelationshipId(capsule: T,
 def __ensureConsistentRelationship(capsule: T,
                                    dictAttributeNamingConventions: dict[str, str]):
   relationshipNameCapsuleInternalAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
+
+  do_debug = False
+  if hasattr(capsule, relationshipNameCapsuleInternalAttr):
+    try:
+      do_debug = capsule.name == "A Fund 1"
+    except:
+      do_debug = False
+
+
+  if do_debug:
+    print(f"      [_capsule_consistency.__ensureConsistentRelationship] on capsule {capsule.__class__.__name__} running __ensureConsistentRelationshipId - relationshipNameCapsuleInternalAttr: {relationshipNameCapsuleInternalAttr}")
+  
   __ensureConsistentRelationshipId(capsule = capsule,
                                     dictAttributeNamingConventions = dictAttributeNamingConventions)
   if hasattr(capsule, relationshipNameCapsuleInternalAttr):
+  
+    if do_debug: 
+      print(f"      [_capsule_consistency.__ensureConsistentRelationship] on capsule {capsule.__class__.__name__} running __ensureConsistentRelationshipName - relationshipNameCapsuleInternalAttr: {relationshipNameCapsuleInternalAttr}")
+  
     __ensureConsistentRelationshipName(capsule = capsule,
                                         dictAttributeNamingConventions = dictAttributeNamingConventions)
+  
+  if do_debug:
+    print(f"      [_capsule_consistency.__ensureConsistentRelationship] on capsule {capsule.__class__.__name__} completed")
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # d. Function sourcing the relationship entity's sqlalchemyTable from db based

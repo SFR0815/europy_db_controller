@@ -496,8 +496,8 @@ class ColControl():
         
 
   def toDict(self,
-             dataEntry: data_block.DataBlock,
-             do_print: bool = False) -> typing.Dict[str, any]:
+             dataEntry: data_block.DataBlock
+             ) -> typing.Dict[str, any]:
     def getRelationshipCapsuleTypeOfName(relationship_capsule_type_name: str):
             for capsuleType in self._capsuleList:
               if capsuleType.__name__ == relationship_capsule_type_name:

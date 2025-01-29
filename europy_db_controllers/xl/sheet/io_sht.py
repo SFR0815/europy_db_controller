@@ -22,6 +22,9 @@ from europy_db_controllers.xl.validation import validation_sht as io_val
 if typing.TYPE_CHECKING:
   from europy_db_controllers.xl import io_wkb
 
+DEBUG_WORKSHEET_NAME = "market_transaction"
+
+
 CT = typing.TypeVar("CT", bound=_capsule_base.CapsuleBase)
 
 class IoWorkSheet():
@@ -98,7 +101,11 @@ class IoWorkSheet():
   def firstEmptyRow(self):
     for row in range(self.rowControl.firstDataRow, self.rowControl.lastDataRow + 1):
       if self.isEmptyRow(row = row):
+        # the first empty row
         return row
+      elif row == self.rowControl.lastDataRow and not self.isEmptyRow(row = row): 
+        # the first empty row is the row after the last data row (all data rows populated)
+        return row + 1
 
   def identify(self,
                wkb:  pxl.Workbook):
@@ -122,11 +129,10 @@ class IoWorkSheet():
     result[self.name] = {}
     nameDict = result[self.name]
     mainDataList = self.rowControl.dataList
+
     for entryCount in range(0, len(mainDataList.listElements)):
       dataEntry = mainDataList.listElements[entryCount]
-      do_print = self.name == "market_transaction"
-      entryDict = self.colControl.toDict(dataEntry=dataEntry,
-                                         do_print=do_print)
+      entryDict = self.colControl.toDict(dataEntry=dataEntry)
       nameDict[entryCount] = entryDict
     deleteDict = mainDataList.getDeleteDict()
     for key, value in deleteDict.items():

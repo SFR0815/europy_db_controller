@@ -14,7 +14,7 @@ CT = typing.TypeVar("CT", bound=_capsule_base.CapsuleBase)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 INPUTS_LINE_PREFIX = " " * 20
 
-DEBUG_CAPSULE_TYPE = "MarketTransactionCapsule"
+DEBUG_CAPSULE_TYPE = "ProjectCapsule"
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Function providing a input parameter line (general)
 def getBasicInputLine(varName: str, 
@@ -111,8 +111,15 @@ def __getObjectSetupCode(capsuleType: type[CT],
                                 f"{_capsule_utils.INIT_ENFORCE_NOT_NEW_OR_DIRTY_FLAG}"
       return output
     output = ""
+    do_debug = capsuleType.__name__ == DEBUG_CAPSULE_TYPE + "ding"
+    if do_debug:
+      output = output + f"{' ' *2}print('[sub controller capsule setup code for capsule {capsuleType.__name__}]: creating capsule')\n"
     output = output + f"{' ' *2}capsule = {capsuleType.__name__}({getParameters()})\n"
+    if do_debug:
+      output = output + f"{' ' *2}print('[sub controller capsule setup code for capsule {capsuleType.__name__}] adding capsule to session')\n"
     output = output + f"{' ' *2}capsule.addToSession()\n"
+    if do_debug:
+      output = output + f"{' ' *2}print('[sub controller capsule setup code for capsule {capsuleType.__name__}]: returning capsule')\n"
     output = output + f"{' ' *2}return capsule\n"
     return output
   def getCodeLines(columnsAndAlikeInfo: typing.Dict[str, typing.Tuple[str, bool, bool]]) -> str:  
@@ -134,7 +141,8 @@ def __addSetupMethod(controllerType: type[T],
                                    setupFncName = setupFncName,
                                    callingGlobals = callingGlobals)
   if capsuleType.__name__ == DEBUG_CAPSULE_TYPE:
-    print(f"setupCode {capsuleType.__name__}: \n{setupCode}")
+    print(f"[__addSetupMethod] name of {controllerType.__name__} creating {capsuleType.__name__}: {setupFncName}")
+    print(f"[__addSetupMethod] setupCode {capsuleType.__name__}: \n{setupCode}")
   exec(setupCode, callingGlobals)
   setupMethod = callingGlobals[setupFncName]
   setupMethodDecorated = _controller_base.cleanAndCloseSession(func = setupMethod)  

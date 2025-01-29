@@ -63,7 +63,7 @@ class DataBlock():
         if self.isList:
           return self.parent.maxRow
         else:
-          return self.dataRow
+          return self.dataRow  
   @property  
   def rangeDelimiters(self) -> typing.Dict[str, int]:
     result = dict[str, int]()

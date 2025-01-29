@@ -9,8 +9,7 @@ from europy_db_controllers.entity_capsules import _capsule_utils, _capsule_base
 
 T = typing.TypeVar("T", bound=_capsule_base.CapsuleBase)
 
-DEBUG_CAPSULE_TYPE = "MarketTransactionCapsule"
-
+DEBUG_CAPSULE_TYPE = "ProjectCapsule"
 
 def __getInitCode(capsuleType: type[T],
                   callingGlobals) -> str:
@@ -123,9 +122,14 @@ def __getInitCode(capsuleType: type[T],
   # The code lines handling the input parameters of each column      
   def getCustomCodeLines(columnsAndAlikeInfo: typing.Dict[str, typing.Tuple[str, bool, bool]]) -> str:  
     output = ""
+
+    do_debug = capsuleType.__name__ == DEBUG_CAPSULE_TYPE + "ding"
+    
     for columnOrAlikeInfo in columnsAndAlikeInfo.values():
       itemName = columnOrAlikeInfo[0]
       isHybridProperty = columnOrAlikeInfo[1]
+      if do_debug:
+        output = output + f"{' ' * 2}print('[__init__ method for capsule {capsuleType.__name__}]: calling self._omit_none_{itemName}({itemName})')\n"
       output = output + f"{' ' * 2}self._omit_none_{itemName}({itemName})\n"    
       if _capsule_utils.isRelationshipIdColumnName(columnName=itemName):
         if isHybridProperty:
@@ -137,9 +141,13 @@ def __getInitCode(capsuleType: type[T],
                                                                       columnName=itemName)
         relSqlaObjectType = callingGlobals[relSqlaObjectTypeName]
         if hasattr(relSqlaObjectType, 'name'):
-          relationshipName = _capsule_utils.getColumnRelationshipNameField(columnName=itemName)
+          relationshipName = _capsule_utils.getColumnRelationshipNameField(columnName=itemName) 
+          if do_debug:
+            output = output + f"{' ' * 2}print(f'[__init__ method for capsule {capsuleType.__name__}]: self._omit_none_{relationshipName}({relationshipName}')\n"
           output = output + f"{' ' * 2}self._omit_none_{relationshipName}({relationshipName})\n"
         relColumnName = _capsule_utils.getColumnToRelationshipName(columnName=itemName)
+        if do_debug:
+          output = output + f"{' ' * 2}print('[__init__ method for capsule {capsuleType.__name__}]: self.sqlalchemyTable.{relColumnName} (if not None)')\n"
         output = output + f"{' ' * 2}if {relColumnName} is not None:\n"
         output = output + f"{' ' * 4}self.sqlalchemyTable.{relColumnName} = {relColumnName}.sqlalchemyTable\n"
     return output 
