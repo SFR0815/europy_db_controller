@@ -134,14 +134,31 @@ def getDbSqlalchemyTables(
       
       # Navigate through the attribute path
       for attrName in attributePath:
-        currentAttr = getattr(currentType, attrName)
+        try:
+          currentAttr = getattr(currentType, attrName)
+        except Exception as e:
+          # Get all attributes of the current type
+          attrs = [attr for attr in dir(currentType) if not attr.startswith('_')]
+          # Build error message with indented attribute list
+          error_msg = f"[_controller_utils.__getDbSqlalchemyTables] Attribute '{attrName}' not found on {currentType.__name__}.\n"
+          error_msg += "Available attributes:\n"
+          for attr in attrs:
+              error_msg += f"  - {attr}\n"
+          error_msg += f"\nOriginal error: {str(e)}\n"
+          raise AttributeError(error_msg)
         # Get the type of the next level if not at end
         if hasattr(currentAttr, 'property') and hasattr(currentAttr.property, 'mapper'):
           currentType = currentAttr.property.mapper.class_
       
       dbQuery = dbQuery.filter(currentAttr == filterAttributeValue)
   with session.no_autoflush:
-    dbSqlalchemyTables = dbQuery.all()
+    import warnings
+    with warnings.catch_warnings(record=True) as w:
+        dbSqlalchemyTables = dbQuery.all()
+        if w and any(issubclass(warning.category, sqlalchemy.exc.SAWarning) for warning in w):
+            print(f"SQLAlchemy warning occurred while querying {sqlalchemyTableType.__name__}")
+            for warning in w:
+                print(f"Warning: {warning.message}")
   for dbSqlalchemyTable in dbSqlalchemyTables:
     if not dbSqlalchemyTable.id in newOrDirtyIds:
       result.append(dbSqlalchemyTable)
@@ -161,6 +178,54 @@ def getSqlAlchemyTablesOfScope(capsuleType: type[CT],
                                       _controller_base.ControllerDataScopes.NEW_AND_DIRTY,
                                filterConditions: typing.Dict[str, any] = None
                                ) -> typing.List[sqlalchemy_decl.DeclarativeMeta]:
+  
+  # Check if filterConditions exist and validate all filter attributes exist on capsuleType
+  if filterConditions is not None:
+    # Get all attributes of the capsule type
+    capsule_attrs = [attr for attr in dir(capsuleType.sqlalchemyTableType) if not attr.startswith('_')]
+    
+    # Track any missing attributes
+    missing_attrs = []
+    
+    # Check each filter attribute exists
+    for filter_attr in filterConditions.keys():
+      # Split attribute path by dots to handle nested attributes
+      attr_path = filter_attr.split('.')
+      current_type = capsuleType.sqlalchemyTableType
+      current_attr = None
+      
+      # Try to navigate through attribute path
+      try:
+        errMsg = "\nLog of attribute path:\n"
+        for attr_name in attr_path:
+          errMsg += f"[_controller_utils.__getSqlAlchemyTablesOfScope]      sqlalchemyTableType: {current_type.__name__} - attr_name: {attr_name}\n"
+          errMsg += f"[_controller_utils.__getSqlAlchemyTablesOfScope]      hasattr(current_type, attr_name): {hasattr(current_type, attr_name)}\n"
+          current_attr = getattr(current_type, attr_name)
+          errMsg += f"[_controller_utils.__getSqlAlchemyTablesOfScope]      hasattr(current_attr, 'property'): {hasattr(current_attr, 'property')}\n"
+          # Get next type if attribute is a relationship or hybrid property
+          if hasattr(current_attr, 'property'):
+            errMsg += f"[_controller_utils.__getSqlAlchemyTablesOfScope]         has attribute property\n" 
+            if hasattr(current_attr.property, 'mapper'):
+              errMsg += f"[_controller_utils.__getSqlAlchemyTablesOfScope]         has attribute property.mapper\n" 
+              current_type = current_attr.property.mapper.class_
+            elif isinstance(current_attr.property, sqlalchemy.ext.hybrid.hybrid_property):
+              errMsg += f"[_controller_utils.__getSqlAlchemyTablesOfScope]         has attribute property.hybrid_property\n" 
+              # Handle hybrid property
+              continue
+      except Exception as e:
+        missing_attrs.append(f"{filter_attr} \n{' ' * 4}(Error: {str(e)})")
+    
+    # Raise error if any attributes are missing
+    if missing_attrs:
+      error_msg = f"[Invalid filter attributes] The following filter attributes do not exist on {capsuleType.__name__}:\n"
+      for attr in missing_attrs:
+        error_msg += f"  - {attr}\n"
+      error_msg += f"\nAvailable attributes on {capsuleType.__name__}:\n"
+      for attr in sorted(capsule_attrs):
+        error_msg += f"  - {attr}\n"
+      error_msg += errMsg
+      raise AttributeError(error_msg)
+    
   sqlalchemyTables: typing.List[sqlalchemy_decl.DeclarativeMeta] = []
   match scope:
     case _controller_base.ControllerDataScopes.ALL_IN_SESSION:

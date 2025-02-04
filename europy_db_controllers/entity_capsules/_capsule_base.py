@@ -423,7 +423,14 @@ class CapsuleBaseWithName(CapsuleBase):
     # if not in new objects search database
     query = sqlalchemy.select(self.sqlalchemyTableType).where(self.sqlalchemyTableType.name == name)
     with session.no_autoflush:
-      return session.scalars(query).unique().all()
+      import warnings
+      with warnings.catch_warnings(record=True) as w:
+          result = session.scalars(query).unique().all()
+          if w and any(issubclass(warning.category, sqlalchemy.exc.SAWarning) for warning in w):
+              print(f"SQLAlchemy warning occurred while querying {self.sqlalchemyTableType.__name__}")
+              for warning in w:
+                  print(f"Warning: {warning.message}")
+      return result
   @classmethod
   @cleanAndCloseSession
   def nameExists(self,
@@ -453,9 +460,6 @@ class CapsuleBaseWithName(CapsuleBase):
   @name.setter
   @cleanAndCloseSession
   def name(self, name: str):
-  
-    do_debug = name == "A Fund 1"
-  
     def raiseDuplicateNameException():
       if self.__class__.hasNewSqlalchemyTablesOfName(self.session, name):
         errMsg = f"[Duplicate name of entity] Newly created entities (exactly '{str(len(sqlalchemyTables))}') " + \
@@ -490,18 +494,10 @@ class CapsuleBaseWithName(CapsuleBase):
                    f"Name causing the issue: {name}\n" + \
                    f"Number of entities using this name: {str(numberOfDirtyOfName)}\n"
           self._raiseException(errMsg) 
-
-      if do_debug:
-        print(f"  [name method] sourcing sqlalchemyTables of name: {name}")
-
       sqlalchemyTables = self._queryTableByName(session = self.session,
                                                name = name)
       if len(sqlalchemyTables) == 1:
         # 1. set sqlalchemyTable if entity with name found on system
-
-        if do_debug:
-          print(f"  [name method] one sqlalchemyTable found for: {name}")
-        
         self.sqlalchemyTable = sqlalchemyTables[0]
         if self.isModified and (name != self.name):
           errMsg = f"[Accessing object with changed name by original name] " + \
@@ -510,20 +506,8 @@ class CapsuleBaseWithName(CapsuleBase):
                    f"Name name provided for entity identification  : {name}\n" + \
                    f"This name has been changed during session into: {self.name}\n"
           self._raiseException(errMsg)
-
-        if do_debug:
-          print(f"  [name method] running  _ensureConsistency")
-        
         self._ensureConsistency()
-
-        if do_debug:
-          print(f"  [name method] completed  _ensureConsistency")
-        
         self._hasValueInput = True
-  
-        if do_debug:
-          print(f"  [name method] returning")
-        
       elif len(sqlalchemyTables) == 0:  
         # 2. Set name on (new) object if not found
         self.sqlalchemyTable.name = name

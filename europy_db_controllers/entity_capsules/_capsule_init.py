@@ -9,7 +9,7 @@ from europy_db_controllers.entity_capsules import _capsule_utils, _capsule_base
 
 T = typing.TypeVar("T", bound=_capsule_base.CapsuleBase)
 
-DEBUG_CAPSULE_TYPE = "ProjectCapsule"
+DEBUG_CAPSULE_TYPE = "MarketAndForwardTransactionCapsule"
 
 def __getInitCode(capsuleType: type[T],
                   callingGlobals) -> str:
@@ -64,7 +64,11 @@ def __getInitCode(capsuleType: type[T],
       if isHybridProperty:
         relationshipName = _capsule_utils.getColumnToRelationshipName(columnName=itemName)
         relSqlaObjectTypeName = getattr(capsuleType.sqlalchemyTableType, relationshipName).fget.__annotations__['return']
-        relSqlaObjectTypeName = relSqlaObjectTypeName.__name__
+        try:
+          relSqlaObjectTypeName = relSqlaObjectTypeName.__name__
+        except Exception as e:
+          errMsg = f"[_capsule_init.__getInitCode] {capsuleType.sqlalchemyTableType.__name__} Error getting relationship type name for {relationshipName} ({relSqlaObjectTypeName} type: {type(capsuleType.sqlalchemyTableType)}). \n{str(e)}"
+          raise Exception(errMsg)
       else:
         relSqlaObjectTypeName = _capsule_utils.getRelationshipTypeNameOfColumnName(sqlalchemyTableType=capsuleType.sqlalchemyTableType, 
                                                                      columnName=itemName)
@@ -123,13 +127,18 @@ def __getInitCode(capsuleType: type[T],
   def getCustomCodeLines(columnsAndAlikeInfo: typing.Dict[str, typing.Tuple[str, bool, bool]]) -> str:  
     output = ""
 
-    do_debug = capsuleType.__name__ == DEBUG_CAPSULE_TYPE + "ding"
-    
+    do_debug = capsuleType.__name__ == DEBUG_CAPSULE_TYPE 
+
+    # if do_debug:
+    #   output = output + f"{' ' * 2}print('[__init__ method for capsule {capsuleType.__name__}]: running init method')\n"
+
     for columnOrAlikeInfo in columnsAndAlikeInfo.values():
       itemName = columnOrAlikeInfo[0]
       isHybridProperty = columnOrAlikeInfo[1]
-      if do_debug:
-        output = output + f"{' ' * 2}print('[__init__ method for capsule {capsuleType.__name__}]: calling self._omit_none_{itemName}({itemName})')\n"
+      
+      # if do_debug:
+      #   output = output + f"{' ' * 2}print('[__init__ method for capsule {capsuleType.__name__}]: calling self._omit_none_{itemName}({itemName})')\n"
+      
       output = output + f"{' ' * 2}self._omit_none_{itemName}({itemName})\n"    
       if _capsule_utils.isRelationshipIdColumnName(columnName=itemName):
         if isHybridProperty:
@@ -142,13 +151,24 @@ def __getInitCode(capsuleType: type[T],
         relSqlaObjectType = callingGlobals[relSqlaObjectTypeName]
         if hasattr(relSqlaObjectType, 'name'):
           relationshipName = _capsule_utils.getColumnRelationshipNameField(columnName=itemName) 
-          if do_debug:
-            output = output + f"{' ' * 2}print(f'[__init__ method for capsule {capsuleType.__name__}]: self._omit_none_{relationshipName}({relationshipName}')\n"
+        
+          # if do_debug:
+          #   output = output + f"{' ' * 2}print(f'[__init__ method for capsule {capsuleType.__name__}]: self._omit_none_{relationshipName}({relationshipName}')\n"
+        
           output = output + f"{' ' * 2}self._omit_none_{relationshipName}({relationshipName})\n"
         relColumnName = _capsule_utils.getColumnToRelationshipName(columnName=itemName)
-        if do_debug:
-          output = output + f"{' ' * 2}print('[__init__ method for capsule {capsuleType.__name__}]: self.sqlalchemyTable.{relColumnName} (if not None)')\n"
+        
+        # if do_debug:
+        #   output = output + f"{' ' * 2}print('[__init__ method for capsule {capsuleType.__name__}]: self.sqlalchemyTable.{relColumnName} (if not None)')\n"
+        # if do_debug and relColumnName == "asset":
+        #   output = output + f"{' ' * 2}assetIsNone = {relColumnName} is None\n"
+        #   output = output + f"{' ' * 2}print('[__init__ method for capsule {capsuleType.__name__}]: self.sqlalchemyTable.{relColumnName} is None: ' + str(assetIsNone))\n"
+        
         output = output + f"{' ' * 2}if {relColumnName} is not None:\n"
+        
+        # if do_debug:
+        #   output = output + f"{' ' * 4}print('[__init__ method for capsule {capsuleType.__name__}]: {relColumnName} is not None')\n"
+        
         output = output + f"{' ' * 4}self.sqlalchemyTable.{relColumnName} = {relColumnName}.sqlalchemyTable\n"
     return output 
   def getCommonCodeLinesAtEnd() -> str:
@@ -187,8 +207,10 @@ def addInitMethods(capsuleList: typing.List[T],
     # file_name = full_file_path + '/' + capsuleType.__name__ + '.txt'
     # with open(file_name, 'w') as file:
     #   file.write(initCodeString)
+
     if capsuleType.__name__ == DEBUG_CAPSULE_TYPE:
       print(f"setupCode {capsuleType.__name__}: \n{initCodeString}")
+
     try:    
       exec(initCodeString , callingGlobals)
     except Exception as e: 

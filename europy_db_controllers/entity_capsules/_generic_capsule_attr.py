@@ -101,12 +101,6 @@ def addDataColumnAttributes(capsuleList: typing.List[T],
   # a. the function setting getter, setter and omit if None
   def addSetterAndGetter(capsuleType: type[T], 
                          attributeInfo: typing.List[typing.Union[str, bool]]):
-
-    # doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
-    # if doPrint:
-    #   print(f"addDataColumnAttributes {capsuleType.__name__}")
-
-  
     attributeName = attributeInfo[0]
     hasSetter = attributeInfo[2]
     def getterFnc(self):
@@ -128,17 +122,9 @@ def addDataColumnAttributes(capsuleList: typing.List[T],
       if value is None: return # do nothing if value is 'None'
       setattr(self, attributeName, value)
     # add getter
-
-    # if doPrint:
-    #   print(f"    implementing getterFnc: {attributeName}")
-
     propertyGetter = property(_capsule_base.cleanAndCloseSession(getterFnc))
     setattr(capsuleType, attributeName, propertyGetter)
     # add setter and omitNone if and only if <hasSetter> is True
-
-    # if doPrint:
-    #   print(f"    implementing setterFnc: {attributeName}")
-
     if hasSetter:
       propertySetter = propertyGetter.setter(_capsule_base.cleanAndCloseSession(setterFnc))
       setattr(capsuleType, attributeName, propertySetter)
@@ -159,16 +145,7 @@ def addDataColumnAttributes(capsuleList: typing.List[T],
                                          columnName = attributeName): continue
       noHybridProperty = not attributeInfo[1]
       isRelationshipIdColumn = _capsule_utils.isRelationshipIdColumnName(columnName = attributeName)
-
-      # if doPrint:
-      #   print(f"\n    attributeInfo: {attributeName} {attributeInfo} isRelationshipIdColumn: {isRelationshipIdColumn} noHybridProperty: {noHybridProperty}")
-      #   print(f"      continue? {isRelationshipIdColumn or noHybridProperty}")
-
       if isRelationshipIdColumn and noHybridProperty: continue
-
-      # if doPrint:
-      #   print(f"    adding setter and getter for {attributeName}")
-
       addSetterAndGetter(capsuleType = capsuleType, attributeInfo = attributeInfo)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -213,11 +190,6 @@ def __setIdProperties(capsuleType: type[T],
 def __setNameProperties(capsuleType: type[T],
                         dictAttributeNamingConventions: dict[str, str],
                         relationshipType: type[U]) -> str:
-  
-  if capsuleType.__name__ == DEBUG_CAPSULE_TYPE:
-    print(f"_generic_capsule_attr.__setNameProperties {capsuleType.__name__} - relationshipType: {relationshipType.__name__}")
-    print(f"           relationshipType has name: {hasattr(relationshipType.sqlalchemyTableType, 'name')}")
-  
   if not hasattr(relationshipType.sqlalchemyTableType, 'name'):
     return
   relationshipNameCapsuleInternalAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_INTERNAL_NAME]
@@ -245,11 +217,6 @@ def __setNameProperties(capsuleType: type[T],
   setattr(capsuleType, relationshipNameCapsuleInternalAttr, None)
   propertyGetter = property(_capsule_base.cleanAndCloseSession(getterFnc))
   propertySetter = propertyGetter.setter(_capsule_base.cleanAndCloseSession(setterFnc))
-  
-  if capsuleType.__name__ == DEBUG_CAPSULE_TYPE:
-    print(f"           adding getter and setter for attribute: {relationshipNameAttr}")
-    print(f"           adding method                         : {omitNoneFncName}")
-  
   setattr(capsuleType, relationshipNameAttr, propertyGetter)
   setattr(capsuleType, relationshipNameAttr, propertySetter)
   setattr(capsuleType, omitNoneFncName, _capsule_base.cleanAndCloseSession(omitNonFnc)) # No prop!!
@@ -258,11 +225,6 @@ def __setNameProperties(capsuleType: type[T],
 def __setRelationshipObjectProperties(capsuleType: type[T],
                                       dictAttributeNamingConventions: dict[str, str],
                                       relationshipType: type[U]) -> str:
-
-  # doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
-  # if doPrint:
-  #   print(f"    __setRelationshipObjectProperties {capsuleType.__name__}")
-
   relationshipIdAttr = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_ID]
   relationshipName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_RELATIONSHIP]
   def getterFnc(self) -> relationshipType:
@@ -277,9 +239,6 @@ def __setRelationshipObjectProperties(capsuleType: type[T],
     if relationshipSqlaTable is None: 
       return None
     else: 
-      
-      # if doPrint:
-      #   print(f"       calling getter function for '{relationshipName}' on {capsuleType.__name__}")
       return relationshipType.defineBySqlalchemyTable(
                   session = self.session,
                   sqlalchemyTableEntity = relationshipSqlaTable)  
@@ -301,8 +260,6 @@ def __setRelationshipObjectProperties(capsuleType: type[T],
     setattr(self, relationshipName, obj)
   propertyGetter = property(_capsule_base.cleanAndCloseSession(getterFnc))
   propertySetter = propertyGetter.setter(_capsule_base.cleanAndCloseSession(setterFnc))
-  # if doPrint:
-  #   print(f"       relationshipName: {relationshipName}")
   setattr(capsuleType, relationshipName, propertyGetter)
   setattr(capsuleType, relationshipName, propertySetter)
   omitNoneFncName = _capsule_utils.getOmitIfNoneFncName(
@@ -383,11 +340,6 @@ def addRelationshipAttributes(capsuleList: typing.List[T],
       callingGlobals: Global namespace containing capsule classes
   """
   for capsuleType in capsuleList:
-
-    doPrint = (capsuleType.__name__ == "MarketAndForwardTransactionCapsule")
-    if doPrint:
-      print(f"addRelationshipAttributes {capsuleType.__name__}")
-
     capsuleType._referred_by_name_capsules = []  
     sqlalchemyTableType = capsuleType.sqlalchemyTableType
     __addGetValidationItemsAttribute(capsuleType=capsuleType,

@@ -24,13 +24,20 @@ def __addCapsuleAttributes(controllerType: type[T],
               scope: _controller_base.ControllerDataScopes = 
                      _controller_base.ControllerDataScopes.NEW_AND_DIRTY,
               sortedBy: str = "",
-              filterConditions: typing.Dict[str, any] = None):
-    sqlalchemyTables = _controller_utils.getSqlAlchemyTablesOfScope(
-                            capsuleType = capsuleType,
-                            controllerType = controllerType, 
-                            self = self, 
-                            scope = scope,
-                            filterConditions = filterConditions)
+              filterConditions: typing.Dict[str, any] = None): 
+    try:
+      sqlalchemyTables = _controller_utils.getSqlAlchemyTablesOfScope(
+                              capsuleType = capsuleType,
+                              controllerType = controllerType, 
+                              self = self, 
+                              scope = scope,
+                              filterConditions = filterConditions)
+    except Exception as e:
+      msg = f"[_controller_attr.__addCapsuleAttributes] iterFnc on {capsuleType.__name__} failed\n" + \
+            f" - controller type: {type(self).__name__}\n" + \
+            f" - scope: {scope}, sortedBy: {sortedBy}, filterConditions: {filterConditions}\n" + \
+            f" - Original error: {str(e)}"
+      raise Exception(msg)
     # Sorting of sqlalchemyTables
     if not sortedBy is None: # 'None' is explicitly not sorted
       if len(sortedBy) > 0: # sort as specified on input

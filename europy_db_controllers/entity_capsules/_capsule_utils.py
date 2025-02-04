@@ -921,6 +921,13 @@ def getRelationshipCapsuleBasicSpecOfIdColumnName(idColumnName: str,
                         f"Column name '{idColumnName}' is not an id column of a relationship.")
     relationshipName = getColumnToRelationshipName(columnName = idColumnName)
     if isHybridProperty:
+        # Check if return type annotation exists
+        hybrid_property = getattr(capsuleType.sqlalchemyTableType, relationshipName)
+        if not 'return' in hybrid_property.fget.__annotations__:
+          errMsg = f"[getRelationshipCapsuleBasicSpecOfIdColumnName] Missing return type annotation for hybrid property '{relationshipName}'"
+          errMsg += f" in {capsuleType.sqlalchemyTableType.__name__}"
+          errMsg += "\nHybrid properties must specify their return type using type annotations"
+          raise Exception(errMsg)
         relationshipType = getattr(capsuleType.sqlalchemyTableType, relationshipName).fget.__annotations__['return']
         relationshipSqlalchemyTypeName = relationshipType.__name__
         list_prefixes = ['list', 'List', 'typing.List']

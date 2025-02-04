@@ -14,7 +14,7 @@ CT = typing.TypeVar("CT", bound=_capsule_base.CapsuleBase)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 INPUTS_LINE_PREFIX = " " * 20
 
-DEBUG_CAPSULE_TYPE = "ProjectCapsule"
+DEBUG_CAPSULE_TYPE = "MarketAndForwardTransactionCapsule"
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Function providing a input parameter line (general)
 def getBasicInputLine(varName: str, 
