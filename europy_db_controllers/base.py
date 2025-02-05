@@ -173,14 +173,34 @@ def hybrid_id_property(source_attribute: str,
 
         @sqlalchemy_hyb.hybrid_property
         def getter(self) -> uuid.UUID:
-            if not isinstance(self, self.__class__):
+            # if not isinstance(self, self.__class__):
+            #     return None
+            if isinstance(self, sqlalchemy.orm.decl_api.DeclarativeAttributeIntercept):
+                print(f"[DEBUG]  returning none")
                 return None
-                
+            print(f"[DEBUG] Current instance: {self}, Class type: {self.__class__}")    
             # Navigate through the attribute path
-            try:  
+            try:
                 source_attr = getattr(self, source_attribute)
             except AttributeError:
                 raise Exception(f"Attribute '{source_attribute}' not found on class '{self.__class__.__name__}'")
+
+            #  DEBUG
+            # ************************************************************************
+            print(f"[DEBUG] Retrieved source_attr: {source_attr}")
+              # Check if source_attr is a DeclarativeAttributeIntercept
+            if isinstance(source_attr, sqlalchemy.orm.attributes.InstrumentedAttribute):
+                # Debugging: Print the state of the source_attr
+                print(f"[DEBUG] source_attr is an InstrumentedAttribute: {source_attr}")
+                if hasattr(source_attr, 'impl') and source_attr.impl is not None:
+                    print(f"[DEBUG] getting source_attr as an DeclarativeAttributeIntercept: {source_attr}")
+                else:
+                    print("[DEBUG] source_attr.impl is None or does not exist.")
+            else:
+                print(f"[DEBUG] source_attr is not an InstrumentedAttribute: {source_attr}")
+            # ************************************************************************
+            
+
             if source_attr is None:
                 return None
             source_property_name = "id" if is_id_of_source else function_name
