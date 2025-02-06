@@ -5,6 +5,8 @@ from sqlalchemy import orm as sqlalchemy_orm
 from sqlalchemy.ext import declarative as sqlalchemy_decl
 from sqlalchemy.ext import hybrid as sqlalchemy_hyb
 
+from europy_db_controllers.table_decorators.utils import object_identification
+
 PARENT_ATTRIBUTE_TO_DELETE_IF_NO_CHILD = "parent_attribute"
 CHILDREN_LIST_ATTRIBUTE_OF_PARENT_TO_DELETE_IF_NO_CHILD = "children_list_attribute"
 
@@ -67,18 +69,18 @@ class Base(sqlalchemy_orm.DeclarativeBase):
 
 # def typed_hybrid_property(table_name: str):
 #     def decorator(func):
-#         RETURN_TYPE_PROPERTY_NAME = f"_hyb_prop_{func.__name__}_return_type"
+#         return_type_property_name = f"_hyb_prop_{func.__name__}_return_type"
         
 #         def wrapper(self, *args, **kwargs):
 #             # Get the actual class, whether we're called on instance or class
 #             class_type = self if isinstance(self, type) else self.__class__
             
-#             if not hasattr(class_type, RETURN_TYPE_PROPERTY_NAME):
+#             if not hasattr(class_type, return_type_property_name):
 #                 # Get the registry and find the return type class
 #                 registry = class_type.registry
 #                 return_type = registry.metadata.tables[table_name].class_
 #                 # Store the type on the class
-#                 setattr(class_type, RETURN_TYPE_PROPERTY_NAME, return_type)
+#                 setattr(class_type, return_type_property_name, return_type)
 #                 # Update the function's return type annotation
 #                 func.__annotations__['return'] = return_type
 #             return func(self, *args, **kwargs)
@@ -91,24 +93,24 @@ class Base(sqlalchemy_orm.DeclarativeBase):
 #         return sqlalchemy_hyb.hybrid_property(wrapper)
 #     return decorator
 
-def typed_hybrid_property(table_path: str):
+def hybrid_typed_entity_property(schema_name: str = None):
     def decorator(func):
-        print(f"[typed_hybrid_property] - applying decorator with table  path: {table_path}")
-        RETURN_TYPE_PROPERTY_NAME = f"_hyb_prop_{func.__name__}_return_type"
-        parts = table_path.split('.')
-        if len(parts) == 2:
-            schema_name, table_name = parts[0], parts[1]
-        else:
-            schema_name, table_name = 'default', table_path
+
+        function_name = func.__name__ # name of function will always be the the __tablename__
+        table_name = function_name
+        table_path = f"{schema_name}.{function_name}"
+        return_type_property_name = f"_hyb_prop_{func.__name__}_return_type" 
+
+        print(f"[typed_hybrid_property] - applying decorator with table  path: {schema_name}.{function_name}")
 
         print(f"[typed_hybrid_property] does something; schema_name: {schema_name}, table_name: {table_name}")
      
         def wrapper(self, *args, **kwargs):
-            print(f"[typed_hybrid_property.wrapper] calle ")
+            print(f"[typed_hybrid_property.wrapper] called ")
             print(f"[typed_hybrid_property.wrapper] does something; schema_name: {schema_name}, table_name: {table_name}")
 
             class_type = self if isinstance(self, type) else self.__class__
-            if not hasattr(class_type, RETURN_TYPE_PROPERTY_NAME):
+            if not hasattr(class_type, return_type_property_name):
                 print(f"[typed_hybrid_property] setting return_type: {class_type.__name__}.{func.__name__}")
                 registry = class_type.registry
                 if table_path not in registry.metadata.tables:
@@ -147,7 +149,7 @@ def typed_hybrid_property(table_path: str):
                             err_msg += f"    - {table}\n"
                     raise KeyError(err_msg)
                 print(f"[typed_hybrid_property] return_type: {return_type.__name__} ")
-                setattr(class_type, RETURN_TYPE_PROPERTY_NAME, return_type)
+                setattr(class_type, return_type_property_name, return_type)
                 getattr(class_type, func.__name__).fget.__annotations__['return'] = return_type
 
             if hasattr(self, '__class__') and isinstance(self, class_type):
@@ -161,8 +163,8 @@ def typed_hybrid_property(table_path: str):
     return decorator
 
 def hybrid_id_property(source_attribute: str, 
-                             source_schema: str = None, 
-                             is_id_of_source: bool = False):
+                       source_schema: str = None, 
+                       is_id_of_source: bool = False):
     """Decorator for creating standardized hybrid properties linked to other table entities
     
     Args:
@@ -178,7 +180,7 @@ def hybrid_id_property(source_attribute: str,
             if isinstance(self, sqlalchemy.orm.decl_api.DeclarativeAttributeIntercept):
                 print(f"[DEBUG]  returning none")
                 return None
-            print(f"[DEBUG] Current instance: {self}, Class type: {self.__class__}")    
+            print(f"[DEBUG] Current instance: {self}, Class type: {self.__class__}")
             # Navigate through the attribute path
             try:
                 source_attr = getattr(self, source_attribute)
@@ -186,19 +188,19 @@ def hybrid_id_property(source_attribute: str,
                 raise Exception(f"Attribute '{source_attribute}' not found on class '{self.__class__.__name__}'")
 
             #  DEBUG
-            # ************************************************************************
-            print(f"[DEBUG] Retrieved source_attr: {source_attr}")
-              # Check if source_attr is a DeclarativeAttributeIntercept
-            if isinstance(source_attr, sqlalchemy.orm.attributes.InstrumentedAttribute):
-                # Debugging: Print the state of the source_attr
-                print(f"[DEBUG] source_attr is an InstrumentedAttribute: {source_attr}")
-                if hasattr(source_attr, 'impl') and source_attr.impl is not None:
-                    print(f"[DEBUG] getting source_attr as an DeclarativeAttributeIntercept: {source_attr}")
-                else:
-                    print("[DEBUG] source_attr.impl is None or does not exist.")
-            else:
-                print(f"[DEBUG] source_attr is not an InstrumentedAttribute: {source_attr}")
-            # ************************************************************************
+            # # ************************************************************************
+            # print(f"[DEBUG] Retrieved source_attr: {source_attr}")
+            #   # Check if source_attr is a DeclarativeAttributeIntercept
+            # if isinstance(source_attr, sqlalchemy.orm.attributes.InstrumentedAttribute):
+            #     # Debugging: Print the state of the source_attr
+            #     print(f"[DEBUG] source_attr is an InstrumentedAttribute: {source_attr}")
+            #     if hasattr(source_attr, 'impl') and source_attr.impl is not None:
+            #         print(f"[DEBUG] getting source_attr as an DeclarativeAttributeIntercept: {source_attr}")
+            #     else:
+            #         print("[DEBUG] source_attr.impl is None or does not exist.")
+            # else:
+            #     print(f"[DEBUG] source_attr is not an InstrumentedAttribute: {source_attr}")
+            # # ************************************************************************
             
 
             if source_attr is None:
@@ -262,7 +264,7 @@ def add_typed_hybrid_property_with_id(sqlalchemyTableType: sqlalchemy_decl.Decla
         raise Exception(f"Attribute '{property_name}' not found on source attribute '{source_attribute}' of class '{self.__class__.__name__}'")
       return result
   entity_getter.__name__ = property_name
-  hyb_entity_getter = typed_hybrid_property(table_path=f"{source_schema}.{property_name}")(entity_getter)   
+  hyb_entity_getter = hybrid_typed_entity_property(schema_name=source_schema)(entity_getter)   
   setattr(sqlalchemyTableType, property_name, hyb_entity_getter)
 
   print(f"[add_typed_hybrid_property_with_id] #4: {property_name}")  
