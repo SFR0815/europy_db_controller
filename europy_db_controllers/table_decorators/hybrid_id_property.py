@@ -2,7 +2,8 @@ import uuid
 from sqlalchemy.ext import hybrid as sqlalchemy_hyb # type: ignore
 from europy_db_controllers.table_decorators.utils import object_identification
 
-def hybrid_id_property(is_id_of_source: bool = False):
+def hybrid_id_property(source_attribute: str, 
+                       is_id_of_source: bool = False):
     """Decorator for creating standardized hybrid properties linked to other table entities
     
     Args:
@@ -15,7 +16,6 @@ def hybrid_id_property(is_id_of_source: bool = False):
         err_msg += f"Source attribute: '{source_attribute}'\n"
         err_msg += f"Error occurred in hybrid_id_property decorator"
         raise ValueError(err_msg)
-      source_attribute = function_name[:-3] # Remove "_id" suffix
 
       @sqlalchemy_hyb.hybrid_property
       def getter(self) -> uuid.UUID:
