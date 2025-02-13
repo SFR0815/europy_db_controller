@@ -22,7 +22,6 @@ def hybrid_id_property(source_attribute: str,
         if not object_identification.isInitializedTableEntity(testObject = self):
             print(f"[DEBUG]  returning none")
             return None
-        print(f"[DEBUG] Current instance: {self}, Class type: {self.__class__}")
         # Navigate through the attribute path
         try:
             source_attr = getattr(self, source_attribute)

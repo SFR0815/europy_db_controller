@@ -229,10 +229,20 @@ def __addFromDictFunctions(controllerType : type[T],
           #   print(f"[_controller_json.__addFromDictFunctions] {contentType.__name__} - contentDict: {contentDict}")
             
           if len(capsuleDict) == 1 and 'name' in capsuleDict: continue
-          _ = contentType.fromDict(session = output.session,
-                                   capsuleDict = capsuleDict,
-                                   persistentMustHaveId = persistentMustHaveId,
-                                   relationshipEntitiesCatalog = relationshipEntitiesCatalog)
+          # _ = contentType.fromDict(session = output.session,
+          #                         capsuleDict = capsuleDict,
+          #                         persistentMustHaveId = persistentMustHaveId,
+          #                         relationshipEntitiesCatalog = relationshipEntitiesCatalog)
+          try:
+            _ = contentType.fromDict(session = output.session,
+                                     capsuleDict = capsuleDict,
+                                     persistentMustHaveId = persistentMustHaveId,
+                                     relationshipEntitiesCatalog = relationshipEntitiesCatalog)
+          except Exception as e:
+            errMsg = f"[_controller_json.__addFromDictFunctions] Error in {contentType.__name__}.fromDict: " + \
+                  f"contentDict: {capsuleDict}\n" + \
+                  f"e: {str(e)}"
+            raise Exception(errMsg)
           # if contentKey == 'transaction_type':
           #   ctDict = contentType.toDict()
           #   print('ctDict: \n', ctDict)

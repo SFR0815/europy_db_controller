@@ -6,6 +6,7 @@ import sqlalchemy
 from sqlalchemy.ext import declarative as sqlalchemy_decl
 
 from europy_db_controllers import base
+from europy_db_controllers import constants
  
 DEBUG_CAPSULE_TYPE = "ProjectCapsule"
 
@@ -63,12 +64,18 @@ class CapsuleBase():
   def _setAttributeOnSqlalchemyTable(self, attributeName: str, value: any):
     setHybridPropertyOnSqlalchemyTableFncName = getSetHybridPropertyOnSqlalchemyTableFncName(attributeName)
     if hasattr(self, setHybridPropertyOnSqlalchemyTableFncName):
-      print(f"\n\n[_setAttributeOnSqlalchemyTable] - self: {self} \n" + \
+      print(f"\n\n[_setAttributeOnSqlalchemyTable] - self: {self.__class__} \n" + \
             f"  setHybridPropertyOnSqlalchemyTableFncName: {setHybridPropertyOnSqlalchemyTableFncName} " + \
             f"  value: {value}")
       # getattr(self, setHybridPropertyOnSqlalchemyTableFncName)(value)
     else:
-      setattr(self.sqlalchemyTable, attributeName, value)
+      try:
+        setattr(self.sqlalchemyTable, attributeName, value)
+      except Exception as e:
+        print(f"\n\n[_setAttributeOnSqlalchemyTable on {self.__class__.__name__}] - self: {self} \n" + \
+              f"  attributeName: {attributeName} " + \
+              f"  value: {value}")
+        raise e
   """
   Problem:
     the deep recursion issue is because by the line getattr(self, setHybridPropertyOnSqlalchemyTableFncName)(value), 
@@ -82,21 +89,6 @@ class CapsuleBase():
           a check is made to see if is_setting_attribute is False. 
           If so, it is set to True before calling the function and reset to False after the call.
   """
-  # def _setAttributeOnSqlalchemyTable(self, attributeName: str, value: any):
-  #   setHybridPropertyOnSqlalchemyTableFncName = getSetHybridPropertyOnSqlalchemyTableFncName(attributeName)
-  #   if hasattr(self, setHybridPropertyOnSqlalchemyTableFncName):
-  #     print(f"\n\n[_setAttributeOnSqlalchemyTable] - self: {self} \n" + \
-  #           f"  setHybridPropertyOnSqlalchemyTableFncName: {setHybridPropertyOnSqlalchemyTableFncName} " + \
-  #           f"  value: {value}")
-  #     # Check to prevent deep recursion
-  #     if not getattr(self, 'is_setting_attribute', False):
-  #       print(f"\n --------------- set flag --------------")
-  #       setattr(self, 'is_setting_attribute', True)  # Set a flag to indicate we're setting the attribute
-  #       getattr(self, setHybridPropertyOnSqlalchemyTableFncName)(value)
-  #       print(f" --------------- reset flag --------------\n")
-  #       setattr(self, 'is_setting_attribute', False)  # Reset the flag
-  #   else:
-  #     setattr(self.sqlalchemyTable, attributeName, value)
 
   def _raiseException(self, errMsg: str): 
     self.session.expunge_all()
@@ -244,10 +236,11 @@ class CapsuleBase():
     self.id = id
 
   def addToSession(self):
-    if not self.sqlalchemyTable in self.session:
-      if not self.isInSession:
-        self.session.add(self.sqlalchemyTable)
+    if not self.isInSession:
+      self.session.add(self.sqlalchemyTable)
   def deleteFromDb(self):
+    if hasattr(self, constants.RUN_BEFORE_DELETION):
+      getattr(self, constants.RUN_BEFORE_DELETION)()
     def delete_parent_if_no_children(parent_attribute: str, 
                                      children_list_attribute: str):
       parent_entity = getattr(self, parent_attribute, None)

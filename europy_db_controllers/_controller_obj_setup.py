@@ -14,7 +14,7 @@ CT = typing.TypeVar("CT", bound=_capsule_base.CapsuleBase)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 INPUTS_LINE_PREFIX = " " * 20
 
-DEBUG_CAPSULE_TYPE = "MarketAndForwardTransactionCapsule"
+DEBUG_CAPSULE_TYPE = "MarketTransactionCapsule"
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Function providing a input parameter line (general)
 def getBasicInputLine(varName: str, 
@@ -22,9 +22,9 @@ def getBasicInputLine(varName: str,
                       default: str = "", 
                       isEnd: bool = False) -> str:
   output = f"{INPUTS_LINE_PREFIX}{varName}"
-  output = output + (f": {typeName}" if len(typeName) > 0 else "")
-  output = output + (f" = {default}" if len(default) > 0 else "")
-  output = output + ("," if not isEnd else ") -> None:") + "\n" 
+  output += (f": {typeName}" if len(typeName) > 0 else "")
+  output += (f" = {default}" if len(default) > 0 else "")
+  output += ("," if not isEnd else ") -> None:") + "\n" 
   return output
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -68,14 +68,14 @@ def __getObjectSetupCode(capsuleType: type[CT],
     for key, columnAttributeName in columnAttrNameDict.items():
       if isColumnAttributeNameToAdd(columnAttributeName = columnAttributeName, key = key): 
         if hasattr(capsuleType, columnAttributeName):
-          output = output + getBasicInputLine(
+          output += getBasicInputLine(
                                 varName=columnAttributeName,
                                 # typeName=pythonType, FIXME: type of input will be defined when suitable
                                 default="None")
     return output
   def getConditionsInputLines():
     output = ""
-    output = output + getBasicInputLine(_capsule_utils.INIT_ENFORCE_NOT_NEW_OR_DIRTY_FLAG, "bool", "False", True)
+    output += getBasicInputLine(_capsule_utils.INIT_ENFORCE_NOT_NEW_OR_DIRTY_FLAG, "bool", "False", True)
     return output
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Definition of the full function head:
@@ -88,8 +88,8 @@ def __getObjectSetupCode(capsuleType: type[CT],
       columnOrAlikeInfo = columnsAndAlikeInfo[inputItemName]
       # print("   column: ", column.name)
       isEnd = (inputItemNumber == len(columnsAndAlikeInfo) - 1)
-      output = output + getCustomInputLine(columnOrAlikeInfo = columnOrAlikeInfo)
-    output = output + getConditionsInputLines()
+      output += getCustomInputLine(columnOrAlikeInfo = columnOrAlikeInfo)
+    output += getConditionsInputLines()
     return output 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # The content of the setup function:
@@ -99,31 +99,32 @@ def __getObjectSetupCode(capsuleType: type[CT],
     def getParameters() -> str:
       indent = INPUTS_LINE_PREFIX + " " * 4
       output = "\n"
-      output = output + f"{indent}session = self.session, \n"
+      output += f"{indent}session = self.session, \n"
       for columnOrAlikeName in columnsAndAlikeInfo.keys():
         columnAttrNameDict = tableAttrNameDict[columnOrAlikeName]
         for key, columnAttributeName in columnAttrNameDict.items():
           if isColumnAttributeNameToAdd(columnAttributeName = columnAttributeName, key = key): 
             if hasattr(capsuleType, columnAttributeName):
               parameterLine = f"{indent}{columnAttributeName} = {columnAttributeName}"
-              output = output + f"{parameterLine}, \n"
-      output = output + f"{indent}{_capsule_utils.INIT_ENFORCE_NOT_NEW_OR_DIRTY_FLAG} = " + \
+              output += f"{parameterLine}, \n"
+      output += f"{indent}{_capsule_utils.INIT_ENFORCE_NOT_NEW_OR_DIRTY_FLAG} = " + \
                                 f"{_capsule_utils.INIT_ENFORCE_NOT_NEW_OR_DIRTY_FLAG}"
       return output
     output = ""
-    do_debug = capsuleType.__name__ == DEBUG_CAPSULE_TYPE + "ding"
+    do_debug = capsuleType.__name__ == DEBUG_CAPSULE_TYPE
     if do_debug:
-      output = output + f"{' ' *2}print('[sub controller capsule setup code for capsule {capsuleType.__name__}]: creating capsule')\n"
-    output = output + f"{' ' *2}capsule = {capsuleType.__name__}({getParameters()})\n"
+      output += f"{' ' *2}print('[sub controller capsule setup code for capsule {capsuleType.__name__}]: creating capsule')\n"
+    output += f"{' ' *2}capsule = {capsuleType.__name__}({getParameters()})\n"
     if do_debug:
-      output = output + f"{' ' *2}print('[sub controller capsule setup code for capsule {capsuleType.__name__}] adding capsule to session')\n"
-    output = output + f"{' ' *2}capsule.addToSession()\n"
+      output += f"{' ' *2}print('[sub controller capsule setup code for capsule {capsuleType.__name__}] adding capsule to session')\n"
+    output += f"{' ' *2}capsule.addToSession()\n"
     if do_debug:
-      output = output + f"{' ' *2}print('[sub controller capsule setup code for capsule {capsuleType.__name__}]: returning capsule')\n"
-    output = output + f"{' ' *2}return capsule\n"
+      output += f"{' ' *2}print('[sub controller capsule setup code for capsule {capsuleType.__name__}]: returning capsule')\n"
+    output += f"{' ' *2}return capsule\n"
     return output
   def getCodeLines(columnsAndAlikeInfo: typing.Dict[str, typing.Tuple[str, bool, bool]]) -> str:  
-    return getCrateCapsuleCode(columnsAndAlikeInfo = columnsAndAlikeInfo) 
+    result = getCrateCapsuleCode(columnsAndAlikeInfo = columnsAndAlikeInfo)
+    return result
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # identification of the column not hidden to the outside
   # print("callingGlobals: ", vars(capsules).keys())

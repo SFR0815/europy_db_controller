@@ -12,7 +12,7 @@ T = typing.TypeVar("T", bound=_capsule_base.CapsuleBase)
 DEBUG_CAPSULE_TYPE = 'MarketTransactionCapsule'
 DEBUG_CAPSULE_TYPE_SINGLE_RELATIONSHIP = 'ProjectAssetCapsule'
 
-DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S%z'
+DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 
 class UUIDEncoder(json.JSONEncoder):
@@ -174,17 +174,12 @@ def __addFromJsonFunction(capsuleType: type[T],
       # Relationship is available as a sub-dict within the capsuleDict provided
       ensureKeyInDict(key = relationshipName)
       relationshipDict = capsuleDict[relationshipName]
-      # print(f"   relationshipDict: {relationshipDict}")      
-      # if no relationship defined on capsuleDict -> do nothing
       if relationshipDict is None or len(relationshipDict) == 0: return None 
       # identify if relationship has been identified in previous initialization of 
       #   the capsule, see above [result = capsuleType(**initParameters)]
       isIdentifiedRelationship = not getattr(resultEntity, relationshipName) is None
       if isIdentifiedRelationship:
         idOnRelationshipDict = relationshipDict['id']
-        # if self.__name__ == 'AssetClassCapsule':
-        #   print(f"\nresultEntity: {resultEntity.__class__}\n" + \
-        #         f"  relationshipName: {relationshipName} - columnName: {columnName}")
         #fix: using 'relationshipName' for get the id field of the relationshipEntity
         #     e.g. relationship_id_field_name = relationshipName + _id
         relationship_id_field_name = relationshipName + '_id'
@@ -224,8 +219,6 @@ def __addFromJsonFunction(capsuleType: type[T],
         else:
           # set the id parameter of the relationship (if none) as provided in the dict
           #     equal to the one identified on DB
-          # if self.__name__ == 'AssetClassCapsule':
-          #   print(f"relationshipIdOnMainCapsule: {relationshipIdOnMainCapsule}")
           relationshipDict['id'] = relationshipIdOnMainCapsule
         result = getattr(relationshipCapsuleClass, nameOfDictFnc)(
                         session = session, 
@@ -247,16 +240,11 @@ def __addFromJsonFunction(capsuleType: type[T],
                   is_hybrid_property: bool,
                   resultEntity: capsuleType
                   ) -> None :
-      
-      # print(f"[_capsule_json.addSingleRelationship] relationships of capsule type")
-      # for rel in capsuleType.sqlalchemyTableType.__mapper__.relationships:
-      #   print(f"  relationship name: {rel.key}")
       relationship_type_name, relationship_type, is_list = _capsule_utils.getRelationshipCapsuleTypeSpecOfIdColumnName(
                         idColumnName = column_name,
                         isHybridProperty = is_hybrid_property,
                         capsuleType = capsuleType,
                         callingGlobals = callingGlobals)
-      # relationshipName = _capsule_utils.getColumnToRelationshipName(columnName = column_name)
       dictAttributeNamingConventions = _capsule_utils.getDictOfAttributeNamingConventionsFromRelationshipName(
                       relationshipName = relationship_type_name)
       ## 
@@ -265,29 +253,8 @@ def __addFromJsonFunction(capsuleType: type[T],
         relationshipEntitiesCatalog[relationship_type_name] = {}
       ##
      
-      # relationshipCapsuleClass = _capsule_utils.getRelationshipCapsuleTypeOfName(
-      #                  relationshipName = relationshipName,
-      #                 sqlalchemyTableType = sqlalchemyTableType,
-      #                 callingGlobals = callingGlobals)
-      
-      # if capsuleType.__name__ == DEBUG_CAPSULE_TYPE and \
-      #           relationship_type.__name__ == DEBUG_CAPSULE_TYPE_SINGLE_RELATIONSHIP:
-      #   print(f"\n[_capsule_json.addSingleRelatedEntity (start)] {capsuleType.__name__} - All new sqlalchemyTables of {relationship_type.__name__} in session:")
-      #   count = 0
-      #   for obj in session.new:
-      #     if isinstance(obj, relationship_type.sqlalchemyTableType):
-      #       print(f"  new {relationship_type.__name__} in session (count: {count}): {obj}")
-      #       count += 1
-            
       relationshipNameAttributeName = dictAttributeNamingConventions[_capsule_utils.REL_ATTR_DICT_KEY_NAME]
       if relationship_type_name in capsuleType.sqlalchemyTableType._exclude_from_json:
-        # if self.__name__ == DEBUG_CAPSULE_TYPE and \
-        #         relationship_type.__name__ == DEBUG_CAPSULE_TYPE_SINGLE_RELATIONSHIP:  
-        #   print(f"[_capsule_json.addSingleRelatedEntity] {capsuleType.__name__} - relationshipName: {relationship_type_name} is excluded from json")
-        # if capsuleType.__name__ == DEBUG_CAPSULE_TYPE:
-        #   print(f"[_capsule_json.addSingleRelatedEntity] - relationship_type_name       : {relationship_type_name}")
-        #   print(f"[_capsule_json.addSingleRelatedEntity] - relationshipNameAttributeName: {relationshipNameAttributeName}")
-          
         relationshipEntity = getExcludedFromJsonSingleRelatedEntity(
                               session = session,
                               relationshipEntitiesCatalog = relationshipEntitiesCatalog,
@@ -295,9 +262,6 @@ def __addFromJsonFunction(capsuleType: type[T],
                               relationshipNameAttributeName = relationshipNameAttributeName,
                               relationshipCapsuleClass = relationship_type)
       else:
-        # if capsuleType.__name__ == DEBUG_CAPSULE_TYPE and \
-        #         relationship_type.__name__ == DEBUG_CAPSULE_TYPE_SINGLE_RELATIONSHIP:    
-        #   print(f"[_capsule_json.addSingleRelatedEntity] {capsuleType.__name__} - relationshipName: {relationshipName} is included in json")
         relationshipEntity = getIncludedInJsonSingleRelatedEntity(
                               session = session,
                               capsuleDict = capsuleDict,
@@ -307,15 +271,6 @@ def __addFromJsonFunction(capsuleType: type[T],
                               resultEntity = resultEntity)
       if not relationshipEntity is None:
         setattr(resultEntity, relationship_type_name, relationshipEntity)
-
-      # if capsuleType.__name__ == DEBUG_CAPSULE_TYPE and \
-      #           relationship_type.__name__ == DEBUG_CAPSULE_TYPE_SINGLE_RELATIONSHIP:
-      #   print(f"\n[_capsule_json.addSingleRelatedEntity (end)] {capsuleType.__name__} - All new sqlalchemyTables of {relationship_type.__name__} in session:")
-      #   count = 0
-      #   for obj in session.new:
-      #     if isinstance(obj, relationship_type.sqlalchemyTableType):
-      #       print(f"  new {relationship_type.__name__} in session (count: {count}): {obj}")
-      #       count += 1
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Methods covering relationships on the n-side of (1 to n) relationships
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -370,7 +325,6 @@ def __addFromJsonFunction(capsuleType: type[T],
     sqlalchemyTableType = capsuleType.sqlalchemyTableType
     ## Identify the fields that are excluded from json
     noJsonFields = sqlalchemyTableType._exclude_from_json
-    # print(f"[_capsule_json.fromDict] - noJsonFields: {noJsonFields}")
     ## Identify the columns that are not merely used for change tracking
     
     columnsAndAlikeInfo = _capsule_utils.getCapsuleInitColumnsAndColumnLikeProperties(capsuleType = capsuleType)
@@ -395,16 +349,15 @@ def __addFromJsonFunction(capsuleType: type[T],
       #                            some of these non-relationship values that recur onto either 
       #                            the existence and/or certain features of such relationships.
       if not isRelationshipColumn:
-        # print(f"[_capsule_json.fncFromDict]")
         columnName = column_name
-        initParameters[columnName] = capsuleDict[columnName]
+        if '_timestamp' in column_name:
+          value = capsuleDict[columnName]
+          if isinstance(value, str):
+            value = datetime.datetime.strptime(value, DATETIME_FORMAT)
+            initParameters[columnName] = value
+        else:
+          initParameters[columnName] = capsuleDict[columnName]
         
-        # if columnName == 'name':
-        #   column_name_name = capsuleDict[columnName]
-        #   if column_name_name == 'asset > static':
-        #     parent_name = capsuleDict['parent_name']
-        #     print(f"    parent_name for asset > static on capsule.fromDict: {parent_name}")
-        # print(f"  initParameters: {initParameters}")
     # initialize the capsule here (before handling the [possibly] provided 
     #     dict definitions of the capsule's relationships
     #     Justification: In case of reading a dict without Ids -
@@ -414,15 +367,6 @@ def __addFromJsonFunction(capsuleType: type[T],
     #                    Otherwise, the relationship's capsule will go without
     #                    id and violate consistency constraints. 
     result = capsuleType(**initParameters)
-
-    # if capsuleType.__name__ == DEBUG_CAPSULE_TYPE: 
-    #   print(f"\n[_capsule_json.fncFromDict] {capsuleType.__name__} - initParameters: {initParameters}")
-    #   print(f"[_capsule_json.fncFromDict] {capsuleType.__name__} - result: {result.sqlalchemyTable}")
-    #   print(f"\n[_capsule_json.fncFromDict] {capsuleType.__name__} - All new sqlalchemyTables in session:")
-    #   for obj in session.new:
-    #       if isinstance(obj, capsuleType.sqlalchemyTableType):
-    #         print(f"  new {capsuleType.__name__} in session: {obj}")
-
     initParameters = None # not used anymore
     result.addToSession()
     # Test if entity has an id that is not provided by the input dict
@@ -464,6 +408,10 @@ def __addFromJsonFunction(capsuleType: type[T],
                                 relationship = relationship,
                                 resultEntity = result)           
     result.addToSession()
+
+    if hasattr(result, 'runAtAddToSession'): 
+      print(f"\n\nEntity {result.__class__.__name__} created at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}")
+      result.runAtAddToSession()
     return result
     
   def fncFromJson(self: type[T], 

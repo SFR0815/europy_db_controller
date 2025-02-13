@@ -10,20 +10,13 @@ def hybrid_typed_entity_property(source_attribute: str,
     table_path = f"{schema_name}.{function_name}"
     return_type_property_name = f"_hyb_prop_{func.__name__}_return_type" 
     
-    print(f"[typed_hybrid_property] - applying decorator with table  path: {schema_name}.{function_name}")
-
-    print(f"[typed_hybrid_property] does something; schema_name: {schema_name}, table_name: {table_name}")
     @sqlalchemy_hyb.hybrid_property
     def getter(self):
-      print(f"[typed_hybrid_property.wrapper] called ")
-      print(f"[typed_hybrid_property.wrapper] does something; schema_name: {schema_name}, table_name: {table_name}")
-
       class_type = object_identification.getApplicableClassDefinition(decoratorObject=self)
       if not hasattr(class_type, return_type_property_name):
         return_type = object_identification.identifyTableTypeOfName(decoratorObjectClass = class_type,
                                                                     table_name = table_name,
                                                                     schema_name = schema_name)
-        print(f"[typed_hybrid_property] return_type: {return_type.__name__} ")
         setattr(class_type, return_type_property_name, return_type)
         getattr(class_type, func.__name__).fget.__annotations__['return'] = return_type
       if not object_identification.isInitializedTableEntity(testObject = self):
@@ -32,7 +25,13 @@ def hybrid_typed_entity_property(source_attribute: str,
         source_attr = getattr(self, source_attribute)
       except AttributeError:
         raise Exception(f"Attribute '{source_attribute}' not found on class '{self.__class__.__name__}'")
-      return source_attr
+      if source_attr is None:
+        return None
+      try:
+        result = getattr(source_attr, function_name)
+      except AttributeError:
+        raise Exception(f"Attribute '{function_name}' not found on class '{source_attr.__class__.__name__}'")
+      return result
     @getter.setter
     def setter(self, value):
       class_type = object_identification.getApplicableClassDefinition(decoratorObject=self)
@@ -40,7 +39,6 @@ def hybrid_typed_entity_property(source_attribute: str,
         return_type = object_identification.identifyTableTypeOfName(decoratorObjectClass = class_type,
                                                                     table_name = table_name,
                                                                     schema_name = schema_name)
-        print(f"[typed_hybrid_property] return_type: {return_type.__name__} ")
         setattr(class_type, return_type_property_name, return_type)
         getattr(class_type, func.__name__).fget.__annotations__['return'] = return_type
       if not object_identification.isInitializedTableEntity(testObject = self):
