@@ -409,9 +409,38 @@ def __addFromJsonFunction(capsuleType: type[T],
                                 resultEntity = result)           
     result.addToSession()
 
+    # if isinstance(result, _capsule_base.CapsuleBaseWithName):
+    #   # try:
+    #     session = result.session
+    #     print(f"ding1 - capsuleType: {capsuleType.__name__}")
+    #     capsuleName = result.name
+    #     print(f"ding2 - capsuleName: {capsuleName}")
+    #     result.session.flush()
+    #     print(f"ding3 - flushed")
+    #     # result = capsuleType(session = session,
+    #     #                      name = capsuleName)
+    #     # print(f"ding4 - identified by new capsule")
+    #     # result.session.add(result.sqlalchemyTable)
+    #     # print(f"ding5 - no error")
+    #   # except:
+    #   #   pass
+    # if not result.sqlalchemyTable in result.session:
+    #   raise Exception(f"result not in session - id: {result.sqlalchemyTable.id}")
+    # else:
+    #   print(f"result in session - id: {result.sqlalchemyTable.id}")
+
+
     if hasattr(result, 'runAtAddToSession'): 
       print(f"\n\nEntity {result.__class__.__name__} created at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}")
+      
       result.runAtAddToSession()
+
+    # if capsuleType.__name__ == "MarketTransactionCapsule":
+    #   if result.project_asset.asset.name == "DAIMLERCHRYSLER AG-REG":
+    #     print(f"[toJson of {capsuleType.__name__}] - {result.project_asset.asset.name}")
+    #     for lot in result.project_asset.fifo_lots:
+    #       print(f"[toJson of {capsuleType.__name__}] -     lot #{lot.number}: fifo_transactions={lot.count_fifo_transactions}, is_open={lot.is_open}, remaining_quantity={lot.remaining_quantity}")
+
     return result
     
   def fncFromJson(self: type[T], 
