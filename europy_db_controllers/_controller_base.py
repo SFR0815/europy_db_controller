@@ -11,7 +11,6 @@ HEAD_KEY = "head"
 # CLIENT_ADMIN_KEY = "client_admin"
 # PROJECT_INPUT_KEY = "project_input"
 # FIFO_DATA_KEY = "fifo_data"
-psycopg2MarketAndForwardTransactionTable
 # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # # enum of the scope of data provided
