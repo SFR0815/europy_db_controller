@@ -263,7 +263,10 @@ class CapsuleBase():
       if hasattr(self.sqlalchemyTable, 'readyForDelete'):
         ready_for_delete, msg = self.sqlalchemyTable.readyForDelete
       if ready_for_delete:
-        self.session.delete(self.sqlalchemyTable)
+        if not self.isPersistent:
+            self.session.expunge(self.sqlalchemyTable)
+        else:
+            self.session.delete(self.sqlalchemyTable)
       else: 
         raise ValueError(msg)
   def refresh(self):
