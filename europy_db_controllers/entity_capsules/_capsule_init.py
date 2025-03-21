@@ -9,7 +9,7 @@ from europy_db_controllers.entity_capsules import _capsule_utils, _capsule_base
 
 T = typing.TypeVar("T", bound=_capsule_base.CapsuleBase)
 
-DEBUG_CAPSULE_TYPE = "MarketAndForwardTransactionCapsule"
+DEBUG_CAPSULE_TYPE = "CoreAccountCapsule"
 
 def __getInitCode(capsuleType: type[T],
                   callingGlobals) -> str:

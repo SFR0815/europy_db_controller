@@ -22,6 +22,7 @@ class Base(sqlalchemy_orm.DeclarativeBase):
   _sorted_by: typing.List[str] = None 
   # pls provide description
   _hyb_props_replacing_columns: typing.Dict[str, str] = {}
+  _flush_after_add_to_session: bool = False
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
   # Dictionary of attributes of parent entities that will be deleted upon deletion of 
   #       the entity if the entity is the parent's last child

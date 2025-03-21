@@ -181,6 +181,10 @@ def __addFromDictFunctions(controllerType : type[T],
       for pos in range(0, len(subControllerKeys)):
         subControllerKey = subControllerKeys[pos]
         subControllerDeleteKey = subControllerDeleteKeys[pos]
+        if not subControllerKey in controllerDict:
+          controllerDict[subControllerKey] = {} 
+        if not subControllerDeleteKey in controllerDict:
+          controllerDict[subControllerDeleteKey] = {}
         if not (subControllerKey in controllerDict and subControllerDeleteKey in controllerDict):
           raise Exception("Some required SubController key no found in subControllerDict.\n" + \
                           "" if subControllerKey in controllerDict else f"Missing subControllerKey: {subControllerKey}\n" + \
@@ -212,11 +216,12 @@ def __addFromDictFunctions(controllerType : type[T],
     else:
       if self._key in controllerDict:
         controllerDict = controllerDict[self._key]
-      ensureAllKeysInSubControllerDict()
+      ensureAllKeysInSubControllerDict() 
       relationshipEntitiesCatalog: typing.Dict[str, dict] = dict[str, dict]()
       for contentPos in range(0, len(self._content)):
         # keys of sub controller and content of sub controller come in same order 
         contentType = self._content[contentPos]
+        # print(f"  [controller_json.fncFromDict] contentType: {contentType.__name__}")
         contentKey = self._keys[contentPos]
         if not contentKey in controllerDict: continue # do nothing if key not present
         contentDict = controllerDict[contentKey]

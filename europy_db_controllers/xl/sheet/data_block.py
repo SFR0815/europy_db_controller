@@ -68,7 +68,7 @@ class DataBlock():
   def rangeDelimiters(self) -> typing.Dict[str, int]:
     result = dict[str, int]()
     result['min_row'] = self.dataRow 
-    result['max_row'] = self.maxRow
+    result['max_row'] = self.maxRowEXCEL_DEF_FILE
     result['min_col'] = self.minCol
     result['max_col'] = self.maxCol
     return result
@@ -139,7 +139,11 @@ class DataBlock():
     for subBlock in self.subBlocks:
       if subBlock.colBlockName == colBlockName:
         return subBlock
-    raise Exception(f"No subBlock with name {colBlockName}")
+    error_msg = f"No subBlock with name {colBlockName}"
+    error_msg += f"\n    available subBlock names:  "
+    for subBlock in self.subBlocks:
+      error_msg += f"\n      {subBlock.colBlockName}"
+    raise Exception(error_msg)
     
   def getDeleteDict(self) -> typing.Dict[str, dict]:   
     result: typing.Dict[str, dict] = dict[str, dict]()

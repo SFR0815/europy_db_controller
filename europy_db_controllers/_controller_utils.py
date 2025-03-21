@@ -156,7 +156,8 @@ def getDbSqlalchemyTables(
     with warnings.catch_warnings(record=True) as w:
         dbSqlalchemyTables = dbQuery.all()
         if w and any(issubclass(warning.category, sqlalchemy.exc.SAWarning) for warning in w):
-            print(f"SQLAlchemy warning occurred while querying {sqlalchemyTableType.__name__}")
+            print(f"\n[_controller_utils.getDbSqlalchemyTables: line {sys._getframe().f_lineno}]" + \
+                  f"\nSQLAlchemy warning occurred while querying {sqlalchemyTableType.__name__}")
             for warning in w:
                 print(f"Warning: {warning.message}")
   for dbSqlalchemyTable in dbSqlalchemyTables:

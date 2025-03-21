@@ -8,7 +8,7 @@ from sqlalchemy.ext import declarative as sqlalchemy_decl
 from europy_db_controllers import base
 from europy_db_controllers import constants
  
-DEBUG_CAPSULE_TYPE = "ProjectCapsule"
+DEBUG_CAPSULE_TYPE = "ProjectCapsule_x"
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -235,12 +235,14 @@ class CapsuleBase():
     if id is None: return
     self.id = id
 
+  def runAtAddToSession(self):
+    pass
   def addToSession(self):
     if not self.isInSession:
       self.session.add(self.sqlalchemyTable)
+      self.runAtAddToSession()
   def deleteFromDb(self):
-    if hasattr(self, constants.RUN_BEFORE_DELETION):
-      getattr(self, constants.RUN_BEFORE_DELETION)()
+    currency_msg = ""
     def delete_parent_if_no_children(parent_attribute: str, 
                                      children_list_attribute: str):
       parent_entity = getattr(self, parent_attribute, None)
@@ -267,6 +269,7 @@ class CapsuleBase():
             self.session.expunge(self.sqlalchemyTable)
         else:
             self.session.delete(self.sqlalchemyTable)
+        self.session.flush()
       else: 
         raise ValueError(msg)
   def refresh(self):
@@ -297,6 +300,16 @@ class CapsuleBase():
     state = self.sqlAState
     if state is None: return False
     return state.persistent
+  @property
+  def isWasDeleted(self):
+    state = self.sqlAState
+    if state is None: return False
+    return state.was_deleted
+  @property
+  def isModified(self):
+    state = self.sqlAState
+    if state is None: return False
+    return state.modified
   @property
   def isInSession(self):
     return self.sqlalchemyTable in self.session
@@ -423,12 +436,13 @@ class CapsuleBaseWithName(CapsuleBase):
       with warnings.catch_warnings(record=True) as w:
           result = session.scalars(query).unique().all()
           if w and any(issubclass(warning.category, sqlalchemy.exc.SAWarning) for warning in w):
-              print(f"SQLAlchemy warning occurred while querying {self.sqlalchemyTableType.__name__}")
-              for warning in w:
+            print(f"\n[_capsule_base._queryTableByName: line {sys._getframe().f_lineno}]" + \
+                  f"\nSQLAlchemy warning occurred while querying {self.sqlalchemyTableType.__name__}" + \
+                  f"\nSQL statement: {str(query)}")
+            for warning in w:
                   print(f"Warning: {warning.message}")
       return result
   @classmethod
-  @cleanAndCloseSession
   def nameExists(self,
                            session: sqlalchemy_orm.Session,
                            name: str) -> bool:

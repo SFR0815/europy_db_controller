@@ -10,7 +10,7 @@ T = typing.TypeVar("T", bound=_capsule_base.CapsuleBase)
 U = typing.TypeVar("U", bound=_capsule_base.CapsuleBase)
 V = typing.TypeVar("V", bound=_capsule_base.CapsuleBase)
 
-DEBUG_CAPSULE_TYPE = "MarketTransactionCapsule"
+DEBUG_CAPSULE_TYPE = "CoreAccountCapsule"
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -237,11 +237,19 @@ def __setRelationshipObjectProperties(capsuleType: type[T],
     getattr(self, fncNameSourceAndConsistency)()
     relationshipSqlaTable = getattr(self.sqlalchemyTable, relationshipName) 
     if relationshipSqlaTable is None: 
+      # if the relationship is None, return None
       return None
-    else: 
-      return relationshipType.defineBySqlalchemyTable(
-                  session = self.session,
-                  sqlalchemyTableEntity = relationshipSqlaTable)  
+    else:
+      sqlalchemy_state = sqlalchemy.inspect(relationshipSqlaTable)
+      if sqlalchemy_state.was_deleted or sqlalchemy_state.detached:
+        # if the relationship is deleted, set the relationship to None
+        setattr(self.sqlalchemyTable, relationshipName, None)
+        return None
+      else: 
+        # in all other cases return the relationship capsule
+        return relationshipType.defineBySqlalchemyTable(
+                    session = self.session,
+                    sqlalchemyTableEntity = relationshipSqlaTable)  
   def setterFnc(self, obj: relationshipType):
     if not hasattr(self.sqlalchemyTable, relationshipIdAttr):
       self._raiseException(f"Illegal use of setter of property '{relationshipName}'" + \
@@ -383,9 +391,28 @@ def addRelationshipAttributes(capsuleList: typing.List[T],
 # shared utils
 def __getRelationshipSqlalchemyTables(self: T,
                                       relationshipName: str):
-  relationshipSqlalchemyTables = getattr(self.sqlalchemyTable, relationshipName)
-  relationshipSqlalchemyTables = [] if relationshipSqlalchemyTables is None else \
-                                  relationshipSqlalchemyTables
+  import warnings
+  with warnings.catch_warnings(record=True) as w:
+      with self.session.no_autoflush:
+        originalRelationshipSqlalchemyTables = getattr(self.sqlalchemyTable, relationshipName)
+      if w and any(issubclass(warning.category, sqlalchemy.exc.SAWarning) for warning in w):
+        print(f"\n[_generic_capsule_attr.__getRelationshipSqlalchemyTables: line {sys._getframe().f_lineno}]" + \
+              f"\nSQLAlchemy warning occurred while querying {self.sqlalchemyTableType.__name__}")
+        print(f"   at query on sqlalchemyTables of {relationshipName}")
+        for warning in w:
+            print(f"Warning: {warning.message}")
+  originalRelationshipSqlalchemyTables = getattr(self.sqlalchemyTable, relationshipName)
+  undeleted_entity_positions = []
+  for position, relationshipSqlalchemyTable in enumerate(originalRelationshipSqlalchemyTables):
+    if relationshipSqlalchemyTable is None: continue
+    sqlalchemy_state = sqlalchemy.inspect(relationshipSqlalchemyTable)
+    if not (sqlalchemy_state.was_deleted or sqlalchemy_state.detached):
+      undeleted_entity_positions.append(position)
+  relationshipSqlalchemyTables = [] if originalRelationshipSqlalchemyTables is None else \
+                                  [originalRelationshipSqlalchemyTables[i] for i in undeleted_entity_positions]
+  if len(relationshipSqlalchemyTables) != len(originalRelationshipSqlalchemyTables):
+    # if some entry of the original list of related entities is obsolete, update the list on the capsule  
+    setattr(self.sqlalchemyTable, relationshipName, relationshipSqlalchemyTables)
   return relationshipSqlalchemyTables
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # shared attribute definitions

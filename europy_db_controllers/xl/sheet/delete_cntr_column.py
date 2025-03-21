@@ -50,6 +50,7 @@ class DeleteControlColumn(data_column.DataColumn):
                colControl: 'col_control.ColControl'
                ) -> None:
     super().__init__(label = DELETE_CONTROL_LABEL,
+                     column_number = columnNumber,
                      subControllerKey = subControllerKey,
                      controllerKeyEnum = controllerKeyEnum,
                      validation = None,

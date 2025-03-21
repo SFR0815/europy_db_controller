@@ -35,6 +35,7 @@ class DataColumn():
   _labelAlignment = pxl_sty.Alignment(textRotation=90, horizontal = 'center')
   def __init__(self,
                label: str,
+               column_number: int,
                subControllerKey: _controller_base.BaseControllerKeyEnum,
                controllerKeyEnum: enum.Enum,
                validation: io_val_col.ValidationColumn,
@@ -50,7 +51,8 @@ class DataColumn():
     self.controllerKeyEnum = controllerKeyEnum
     self.validation = validation
     self.unique = unique
-    self.sqlalchemyDataType = sqlalchemyDataType
+    self.sqlalchemyDataType = sqlalchemyDataType 
+    self._column_number: int = column_number
     self._rowControl: 'row_control.RowControl' = rowControl
     self._colControl: 'col_control.ColControl' = colControl
 
@@ -63,16 +65,23 @@ class DataColumn():
     #         => e.g. use number of such column as column number when defining coordinates
     # Get the named range of the column
     if self.localDataRangeName not in self.sht.defined_names:
-      raise Exception(f"Named range '{self.localDataRangeName}' is not defined.")
-    defined_name = self.sht.defined_names[self.localDataRangeName]
-    destinations = list(defined_name.destinations)
-    # Ensure there is only one column in the named range
-    if len(destinations) != 1:
-      raise Exception("Expected exactly one column in the named range.")
-    # Extract the column number from the destination
-    _, coord = destinations[0]
-    min_col = pxl_rng.CellRange(range_string=coord).min_col
-    return min_col
+      return self._column_number
+      # err_msg = f"Named range '{self.localDataRangeName}' is not defined." 
+      # err_msg += f"\nOn ioWorksheet: {self.sht.title}"
+      # err_msg += "\nDefined names in workbook:"
+      # for name in self.sht.parent.defined_names:
+      #     err_msg += f"\n    {name}"
+      # raise Exception(err_msg)
+    else:
+      defined_name = self.sht.defined_names[self.localDataRangeName]
+      destinations = list(defined_name.destinations)
+      # Ensure there is only one column in the named range
+      if len(destinations) != 1:
+        raise Exception("Expected exactly one column in the named range.")
+      # Extract the column number from the destination
+      _, coord = destinations[0]
+      min_col = pxl_rng.CellRange(range_string=coord).min_col
+      return min_col
   @property
   def rowControl(self) -> 'row_control.RowControl':
     return self._rowControl
@@ -104,7 +113,7 @@ class DataColumn():
     return pxl.utils.cell.quote_sheetname(self.sht.title)
   @property 
   def localDataRangeName(self) -> str:
-    return f"{self._colControl.tableName}_{self.label}"
+    return f"{self._colControl.label}_{self.label}"
   @property
   def globalDataRangeName(self) -> str:
     return f"{self.quotedSheetTitle}!{self.localDataRangeName}"
@@ -169,7 +178,14 @@ class DataColumn():
         validationSourceSheetTitle = self.validation.validationLocator[1]
         validationSourceSheet = self.validation.wkb[validationSourceSheetTitle]
         validationSourceRangeName = f"{validationSourceSheetTitle}_name"
-        validationSourceRange = validationSourceSheet.defined_names[validationSourceRangeName]
+        try:
+            validationSourceRange = validationSourceSheet.defined_names[validationSourceRangeName]
+        except KeyError:
+            err_msg = f"Could not find defined name '{validationSourceRangeName}' in sheet '{validationSourceSheetTitle}'"
+            err_msg +=  "\nAvailable defined names:"
+            for name in validationSourceSheet.defined_names:
+                err_msg += f"\n    {name}"
+            raise Exception(err_msg)
         for destination in validationSourceRange.destinations:
           validationSourceCellRange = pxl_rng.CellRange(range_string=destination[1])
       dataValidation = self.validation.dataValidation(quotedSheetTitle = validationSourceSheetTitle,
@@ -181,9 +197,13 @@ class DataColumn():
                sht: pxl_sht.Worksheet) -> None:
     self.sht = sht
     if not self.localDataRangeName in self.sht.defined_names:
-      raise Exception("Missing defined name on ioWorksheet.\n" + \
-                      f"Defined name missing: {self.localDataRangeName}\n" + \
-                      f"On ioWorksheet: {self.sht.title}")
+      err_msg = f"Missing defined name on ioWorksheet.\n" 
+      err_msg += f"Defined name missing: {self.localDataRangeName}\n"
+      err_msg += f"On ioWorksheet: {self.sht.title}"
+      err_msg += "\nAvailable defined names:"
+      for name in self.sht.defined_names:
+        err_msg += f"\n    {name}"
+      raise Exception(err_msg)
     definedName = self.sht.defined_names[self.localDataRangeName]
     dest = definedName.destinations
     for title, coord in dest:

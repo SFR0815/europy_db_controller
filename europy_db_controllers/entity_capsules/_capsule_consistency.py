@@ -12,7 +12,7 @@ from europy_db_controllers.entity_capsules.capsule_consistency_fnc import e_ensu
 T = typing.TypeVar("T", bound=_capsule_base.CapsuleBase)
 U = typing.TypeVar("U", bound=_capsule_base.CapsuleBase)  
 
-DEBUG_CAPSULE_TYPE = "MarketTransactionCapsule" 
+DEBUG_CAPSULE_TYPE = "CoreAccountCapsule" 
 DEBUG_RELATIONSHIP_NAME = "asset"
 
 def __defaultConsistencyCheck(self: T):
